@@ -7,6 +7,8 @@ import OperatorLogin from '@/components/auth/OperatorLogin'
 import AdminLayout from '@/components/admin/AdminLayout'
 import OperatorDashboard from '@/components/operator/AttendanceDashboard'
 import LoadingScreen from '@/components/shared/LoadingScreen'
+import PublicMeetingAttendance from '@/components/public/PublicMeetingAttendance'
+import LiveMeetingProjector from '@/components/admin/LiveMeetingProjector'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,41 +22,33 @@ const queryClient = new QueryClient({
 function AppRoutes() {
   const { loading, profile, isAdmin, isOperator } = useAuth()
 
-  if (loading) return <LoadingScreen />
-
-  if (!profile) {
-    return (
-      <Routes>
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/operator/login" element={<OperatorLogin />} />
-        <Route path="*" element={<Navigate to="/admin/login" replace />} />
-      </Routes>
-    )
-  }
-
-  if (isAdmin) {
-    return (
-      <Routes>
-        <Route path="/admin/*" element={<AdminLayout />} />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
-      </Routes>
-    )
-  }
-
-  if (isOperator) {
-    return (
-      <Routes>
-        <Route path="/operator" element={<OperatorDashboard />} />
-        <Route path="*" element={<Navigate to="/operator" replace />} />
-      </Routes>
-    )
-  }
-
   return (
     <Routes>
+      {/* 1. Public Kiosk / WhatsApp Attendance Links (No Login Required) */}
+      <Route path="/attend/:id" element={<PublicMeetingAttendance />} />
+      <Route path="/m/:id" element={<PublicMeetingAttendance />} />
+
+      {/* 2. Fullscreen Live Projector / Display Mode */}
+      <Route path="/admin/projector/:id" element={<LiveMeetingProjector />} />
+
+      {/* 3. Authentication Pages */}
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/operator/login" element={<OperatorLogin />} />
-      <Route path="*" element={<Navigate to="/admin/login" replace />} />
+
+      {/* 4. Authenticated Admin Portal */}
+      {isAdmin && <Route path="/admin/*" element={<AdminLayout />} />}
+
+      {/* 5. Authenticated Operator Portal */}
+      {isOperator && <Route path="/operator" element={<OperatorDashboard />} />}
+
+      {/* 6. Fallback redirection */}
+      {loading ? (
+        <Route path="*" element={<LoadingScreen />} />
+      ) : profile ? (
+        <Route path="*" element={<Navigate to={isAdmin ? "/admin" : "/operator"} replace />} />
+      ) : (
+        <Route path="*" element={<Navigate to="/admin/login" replace />} />
+      )}
     </Routes>
   )
 }

@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase, type Program } from '@/lib/supabase'
 import {
   Users, Building2, CalendarCheck, CheckCircle,
-  Star, ClipboardList, Award
+  Star, ClipboardList, Award, Sparkles, Monitor
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { clsx } from 'clsx'
+import LiveAttendanceMonitorModal from './LiveAttendanceMonitorModal'
 
 function StatCard({ icon: Icon, label, value, sub, color, to }: {
   icon: React.ElementType, label: string, value: string | number,
@@ -29,13 +31,14 @@ function StatCard({ icon: Icon, label, value, sub, color, to }: {
 }
 
 export default function AdminDashboard() {
+  const [monitorOpen, setMonitorOpen] = useState(false)
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
       const [members, programs, activeProgram, clusters, units, subwings, operators] = await Promise.all([
         supabase.from('members').select('id, is_active', { count: 'exact' }),
         supabase.from('programs').select('id, status', { count: 'exact' }),
-        supabase.from('programs').select('id, name, venue, program_date, status').eq('status', 'active').maybeSingle(),
+        supabase.from('programs').select('*').eq('status', 'active').maybeSingle(),
         supabase.from('clusters').select('id', { count: 'exact' }),
         supabase.from('units').select('id', { count: 'exact' }),
         supabase.from('sub_wings').select('id', { count: 'exact' }),
@@ -45,7 +48,7 @@ export default function AdminDashboard() {
         totalMembers: members.count ?? 0,
         activeMembers: (members.data ?? []).filter((m: { is_active: boolean }) => m.is_active).length,
         totalPrograms: programs.count ?? 0,
-        activeProgram: activeProgram.data,
+        activeProgram: activeProgram.data as Program | null,
         totalClusters: clusters.count ?? 0,
         totalUnits: units.count ?? 0,
         totalSubwings: subwings.count ?? 0,
@@ -53,7 +56,7 @@ export default function AdminDashboard() {
         activeOperators: (operators.data ?? []).filter((o: { is_active: boolean }) => o.is_active).length,
       }
     },
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   })
 
   const { data: activeProgramStats } = useQuery({
@@ -84,7 +87,7 @@ export default function AdminDashboard() {
       }
       return { presentCount, totalMembers, absentCount: totalMembers - presentCount, zonePoints, clusterPoints, unitPoints }
     },
-    refetchInterval: 15000,
+    refetchInterval: 10000,
   })
 
   const { data: recentPrograms = [] } = useQuery<Program[]>({
@@ -109,30 +112,68 @@ export default function AdminDashboard() {
 
       {/* Active Program Banner */}
       {stats?.activeProgram && (
-        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-5 text-white animate-fade-in">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            <span className="text-sm font-semibold uppercase tracking-wider">Program Active</span>
+        <div className="bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 rounded-3xl p-6 text-white shadow-xl animate-fade-in space-y-4 border border-emerald-400/30">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+              <span className="text-xs font-black uppercase tracking-widest text-emerald-200">
+                Live Attendance Now Active
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setMonitorOpen(true)}
+                className="btn bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-black py-2 px-3.5 rounded-xl shadow-md transition flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                <span>Open Live Monitor (തത്സമയം കാണുക)</span>
+              </button>
+
+              <button
+                onClick={() => window.open(`/admin/projector/${stats.activeProgram!.id}`, '_blank')}
+                className="btn bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold py-2 px-3.5 rounded-xl transition flex items-center gap-1.5"
+              >
+                <Monitor className="w-3.5 h-3.5" />
+                <span>Projector</span>
+              </button>
+            </div>
           </div>
-          <h2 className="text-xl font-bold">{stats.activeProgram.name}</h2>
-          <p className="text-green-100 text-sm mt-1">{stats.activeProgram.venue} • {new Date(stats.activeProgram.program_date).toLocaleDateString('en-IN')}</p>
+
+          <div>
+            <h2 className="text-2xl font-black text-white">{stats.activeProgram.name}</h2>
+            <p className="text-emerald-100 text-sm mt-1">
+              📍 {stats.activeProgram.venue} • 📅 {new Date(stats.activeProgram.program_date).toLocaleDateString('en-IN')}
+            </p>
+          </div>
+
           {activeProgramStats && (
-            <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-white/20">
-              <div className="text-center">
-                <p className="text-2xl font-bold">{activeProgramStats.presentCount}</p>
-                <p className="text-xs text-green-100">Present</p>
+            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/20">
+              <div className="text-center bg-black/20 rounded-xl p-3 border border-white/10">
+                <p className="text-3xl font-black text-white">{activeProgramStats.presentCount}</p>
+                <p className="text-xs text-emerald-200 mt-0.5">Present (ഹാജർ)</p>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold">{activeProgramStats.absentCount}</p>
-                <p className="text-xs text-green-100">Absent</p>
+              <div className="text-center bg-black/20 rounded-xl p-3 border border-white/10">
+                <p className="text-3xl font-black text-slate-300">{activeProgramStats.absentCount}</p>
+                <p className="text-xs text-slate-300 mt-0.5">Absent (ബാക്കി)</p>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold">{activeProgramStats.zonePoints + activeProgramStats.clusterPoints + activeProgramStats.unitPoints}</p>
-                <p className="text-xs text-green-100">Points Earned</p>
+              <div className="text-center bg-black/20 rounded-xl p-3 border border-white/10">
+                <p className="text-3xl font-black text-amber-300">
+                  {activeProgramStats.presentCount}
+                </p>
+                <p className="text-xs text-amber-200 mt-0.5">Points Earned (+1/person)</p>
               </div>
             </div>
           )}
         </div>
+      )}
+
+      {/* Live Monitor Modal */}
+      {monitorOpen && stats?.activeProgram && (
+        <LiveAttendanceMonitorModal
+          program={stats.activeProgram}
+          onClose={() => setMonitorOpen(false)}
+        />
       )}
 
       {/* Stat Cards */}

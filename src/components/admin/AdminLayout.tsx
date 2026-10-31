@@ -19,9 +19,12 @@ import SubWingManagement from './SubWingManagement'
 import AttendanceReports from './AttendanceReports'
 import HistoricalRecords from './HistoricalRecords'
 import AdminSettings from './AdminSettings'
+import LeaderboardStandings from './LeaderboardStandings'
+import { Trophy } from 'lucide-react'
 
 const navItems = [
   { path: '', icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { path: 'leaderboard', icon: Trophy, label: 'Leaderboard & Points' },
   { path: 'members', icon: Users, label: 'Members' },
   { path: 'committees', icon: Building2, label: 'Committees & Units' },
   { path: 'programs', icon: CalendarCheck, label: 'Programs' },
@@ -150,6 +153,7 @@ export default function AdminLayout() {
           <div className="flex-1 p-4 lg:p-6">
             <Routes>
               <Route index element={<AdminDashboard />} />
+              <Route path="leaderboard" element={<LeaderboardStandings />} />
               <Route path="members" element={<MemberManagement />} />
               <Route path="committees" element={<CommitteeManagement />} />
               <Route path="programs" element={<ProgramManagement />} />

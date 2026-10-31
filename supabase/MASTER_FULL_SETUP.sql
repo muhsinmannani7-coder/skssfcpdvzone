@@ -1315,6 +1315,109 @@ BEGIN
 END $$;
 
 -- ============================================================
+-- RE-OPEN PROGRAM FUNCTION
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.reopen_program(p_program_id UUID)
+RETURNS JSONB AS $$
+BEGIN
+  UPDATE public.programs
+  SET status = 'active', closed_at = NULL
+  WHERE id = p_program_id;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Program not found');
+  END IF;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
+-- PUBLIC ATTENDANCE RECORD FUNCTION (Security Definer)
+-- ============================================================
+CREATE OR REPLACE FUNCTION public.public_record_attendance(
+  p_program_id UUID,
+  p_member_id UUID
+)
+RETURNS JSONB AS $$
+DECLARE
+  v_program_status TEXT;
+  v_existing UUID;
+  v_attendance_id UUID;
+  v_member_name TEXT;
+BEGIN
+  SELECT status INTO v_program_status
+  FROM public.programs WHERE id = p_program_id;
+
+  IF v_program_status IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Program not found');
+  END IF;
+
+  IF v_program_status != 'active' THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Attendance is currently closed or paused by the admin');
+  END IF;
+
+  SELECT full_name INTO v_member_name
+  FROM public.members WHERE id = p_member_id;
+
+  IF v_member_name IS NULL THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Member not found');
+  END IF;
+
+  SELECT id INTO v_existing
+  FROM public.attendance
+  WHERE program_id = p_program_id AND member_id = p_member_id;
+
+  IF v_existing IS NOT NULL THEN
+    RETURN jsonb_build_object(
+      'success', false,
+      'error', 'Attendance already marked for this member',
+      'duplicate', true,
+      'attendance_id', v_existing
+    );
+  END IF;
+
+  INSERT INTO public.attendance (program_id, member_id, marked_at)
+  VALUES (p_program_id, p_member_id, NOW())
+  RETURNING id INTO v_attendance_id;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'attendance_id', v_attendance_id,
+    'member_name', v_member_name,
+    'marked_at', NOW()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
+-- PUBLIC POLICIES FOR MEETING LINKS
+-- ============================================================
+DROP POLICY IF EXISTS "Public view programs" ON public.programs;
+CREATE POLICY "Public view programs" ON public.programs FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public view members" ON public.members;
+CREATE POLICY "Public view members" ON public.members FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Public view positions" ON public.positions;
+CREATE POLICY "Public view positions" ON public.positions FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public view member_positions" ON public.member_positions;
+CREATE POLICY "Public view member_positions" ON public.member_positions FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Public view committees" ON public.committees;
+CREATE POLICY "Public view committees" ON public.committees FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Public view units" ON public.units;
+CREATE POLICY "Public view units" ON public.units FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Public view clusters" ON public.clusters;
+CREATE POLICY "Public view clusters" ON public.clusters FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "Public view attendance" ON public.attendance;
+CREATE POLICY "Public view attendance" ON public.attendance FOR SELECT USING (true);
+
+-- ============================================================
 -- FINAL VERIFICATION
 -- ============================================================
 
