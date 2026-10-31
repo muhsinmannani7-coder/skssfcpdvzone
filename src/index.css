@@ -1,0 +1,181 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@layer base {
+  * {
+    @apply border-surface-200;
+  }
+  body {
+    @apply bg-surface-50 text-surface-900 font-sans antialiased;
+  }
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-100;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-300 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-surface-400;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-sm;
+  }
+  .btn-secondary {
+    @apply bg-surface-100 text-surface-700 hover:bg-surface-200 focus:ring-surface-400 border border-surface-200;
+  }
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+  .btn-success {
+    @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
+  }
+  .btn-warning {
+    @apply bg-secondary-500 text-white hover:bg-secondary-600 focus:ring-secondary-400;
+  }
+  .btn-lg {
+    @apply px-6 py-3 text-base;
+  }
+  .btn-xl {
+    @apply px-8 py-4 text-lg font-semibold;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+  .btn-icon {
+    @apply p-2;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-card border border-surface-100;
+  }
+  .card-hover {
+    @apply hover:shadow-card-hover transition-shadow duration-200;
+  }
+  
+  .input {
+    @apply w-full px-3 py-2 text-sm bg-white border border-surface-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors placeholder:text-surface-400 disabled:bg-surface-50 disabled:text-surface-400;
+  }
+  .input-lg {
+    @apply px-4 py-3 text-base;
+  }
+  
+  .label {
+    @apply block text-sm font-medium text-surface-700 mb-1;
+  }
+  
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-green {
+    @apply bg-green-100 text-green-800;
+  }
+  .badge-red {
+    @apply bg-red-100 text-red-800;
+  }
+  .badge-blue {
+    @apply bg-blue-100 text-blue-800;
+  }
+  .badge-yellow {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+  .badge-gray {
+    @apply bg-surface-100 text-surface-600;
+  }
+  .badge-purple {
+    @apply bg-purple-100 text-purple-800;
+  }
+  
+  .stat-card {
+    @apply bg-white rounded-xl shadow-card border border-surface-100 p-5 flex flex-col gap-3;
+  }
+  
+  .page-header {
+    @apply mb-6;
+  }
+  .page-title {
+    @apply text-2xl font-bold text-surface-900;
+  }
+  .page-subtitle {
+    @apply text-sm text-surface-500 mt-1;
+  }
+  
+  .table-wrapper {
+    @apply overflow-x-auto rounded-xl border border-surface-200;
+  }
+  .table {
+    @apply w-full text-sm;
+  }
+  .table th {
+    @apply px-4 py-3 text-left text-xs font-semibold text-surface-500 uppercase tracking-wider bg-surface-50 border-b border-surface-200;
+  }
+  .table td {
+    @apply px-4 py-3 text-surface-700 border-b border-surface-100;
+  }
+  .table tr:last-child td {
+    @apply border-b-0;
+  }
+  .table tr:hover td {
+    @apply bg-surface-50;
+  }
+  
+  .section-header {
+    @apply flex items-center justify-between mb-4;
+  }
+  .section-title {
+    @apply text-lg font-semibold text-surface-800;
+  }
+  
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer;
+  }
+  .sidebar-item-active {
+    @apply bg-primary-600 text-white shadow-sm;
+  }
+  .sidebar-item-inactive {
+    @apply text-surface-600 hover:bg-surface-100 hover:text-surface-900;
+  }
+
+  /* Status badges */
+  .status-upcoming {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+  .status-active {
+    @apply bg-green-100 text-green-800 animate-pulse-slow;
+  }
+  .status-closed {
+    @apply bg-surface-100 text-surface-600;
+  }
+}
+
+/* Overlay for mobile sidebar */
+.sidebar-overlay {
+  @apply fixed inset-0 bg-black/40 z-20 lg:hidden;
+}
+
+/* Smooth page transitions */
+.page-transition {
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* Number input no spinners */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Print styles */
+@media print {
+  .no-print { display: none !important; }
+  body { @apply bg-white; }
+  .card { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+}
