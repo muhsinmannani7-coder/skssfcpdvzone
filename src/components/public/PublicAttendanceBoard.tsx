@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase, type Program } from '@/lib/supabase'
 import {
   Shield, Users, Award, MapPin, Calendar, Clock,
-  RefreshCw, AlertCircle, CheckCircle2, Lock, ExternalLink,
+  RefreshCw, AlertCircle, CheckCircle2, Lock,
   Star, Layers, Trophy
 } from 'lucide-react'
 import { format } from 'date-fns'
@@ -288,17 +288,6 @@ export default function PublicAttendanceBoard() {
               </div>
             )}
           </div>
-
-          {/* Attend link */}
-          {program.status === 'active' && (
-            <a
-              href={`/attend/${program.id}`}
-              className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-sm font-bold transition"
-            >
-              <ExternalLink className="w-4 h-4" />
-              ഹാജർ രേഖപ്പെടുത്താൻ ഇവിടെ ക്ലിക്ക് ചെയ്യുക
-            </a>
-          )}
         </div>
 
         {/* Points Summary Card */}
@@ -398,14 +387,9 @@ export default function PublicAttendanceBoard() {
               <p className="text-slate-400 font-medium text-sm">
                 ഇതുവരെ ആരും ഹാജർ രേഖപ്പെടുത്തിയിട്ടില്ല
               </p>
-              {program.status === 'active' && (
-                <a
-                  href={`/attend/${program.id}`}
-                  className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 underline"
-                >
-                  ഹാജർ രേഖപ്പെടുത്തൽ തുടങ്ങുക
-                </a>
-              )}
+              <p className="text-xs text-slate-500">
+                (കമ്മിറ്റി ഡെസ്കിൽ ഹാജർ രേഖപ്പെടുത്തുമ്പോൾ ഇവിടെ തത്സമയം കാണാം)
+              </p>
             </div>
           ) : (
             <div className="divide-y divide-white/5">

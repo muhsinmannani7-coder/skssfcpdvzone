@@ -5,7 +5,7 @@ import { useToast } from '@/components/shared/Toaster'
 import {
   Plus, Play, Square, CalendarCheck, MapPin, Clock, X, Save,
   Loader2, AlertTriangle, Share2, Copy, ExternalLink, Monitor,
-  RotateCcw, Sparkles, Check, QrCode, LayoutList
+  RotateCcw, Sparkles, Check, LayoutList, Lock
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { format } from 'date-fns'
@@ -686,17 +686,17 @@ function MeetingShareModal({
   }
 
   const shareWhatsApp = () => {
-    const text = `*SKSSF ചപ്പാരപ്പടവ് മേഖല*\n📢 *മീറ്റിംഗ് ഹാജർ രേഖപ്പെടുത്തൽ (ATTENDANCE)*\n\n📌 *${program.name}*\n📍 *സ്ഥലം (Venue):* ${program.venue}\n📅 *തീയതി (Date):* ${format(new Date(program.program_date), 'dd MMM yyyy')}\n\n👉 ഹാജർ രേഖപ്പെടുത്താൻ (To Mark Attendance):\n🔗 ${url}\n\n👁️ ഹാജർ പട്ടിക കാണാൻ (View Attendance Board):\n📋 ${boardUrl}\n\n(പ്രത്യേക പാസ്‌വേർഡ് ആവശ്യമില്ല. മൊബൈൽ നമ്പർ നൽകി കൺഫോം ചെയ്യുക)`
+    // For general public / WhatsApp groups: ONLY send the Board link (read-only view)
+    const text = `*SKSSF ചപ്പാരപ്പടവ് മേഖല*\n📋 *ഹാജർ പട്ടിക (LIVE ATTENDANCE BOARD)*\n\n📌 *${program.name}*\n📍 *സ്ഥലം:* ${program.venue}\n📅 *തീയതി:* ${format(new Date(program.program_date), 'dd MMM yyyy')}\n\n👉 *ആരെല്ലാം ഹാജരായി എന്ന് തത്സമയം കാണാൻ താഴെ കാണുന്ന ലിങ്കിൽ ക്ലിക്ക് ചെയ്യുക:*\n📋 ${boardUrl}\n\n_(ശ്രദ്ധിക്കുക: ഇത് ഹാജർ വിവരങ്ങൾ കാണാൻ മാത്രമുള്ള ലിങ്കാണ്. എഡിറ്റ് ചെയ്യാൻ സാധിക്കില്ല)_`
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')
   }
 
-  const shareBoardWhatsApp = () => {
-    const text = `*SKSSF ചപ്പാരപ്പടവ് മേഖല*\n📋 *ഹാജർ പട്ടിക – ${program.name}*\n📍 ${program.venue} • 📅 ${format(new Date(program.program_date), 'dd MMM yyyy')}\n\n👉 ഹാജരായ അംഗങ്ങളുടെ പട്ടിക ഇവിടെ കാണാം:\n${boardUrl}`
+  const shareDeskToCommitteeWhatsApp = () => {
+    // ONLY for designated committee members / registration desk volunteers
+    const text = `*SKSSF ചപ്പാരപ്പടവ് മേഖല – രജിസ്ട്രേഷൻ ഡെസ്ക്*\n🔐 *ഹാജർ രേഖപ്പെടുത്താനുള്ള ഔദ്യോഗിക ലിങ്ക്*\n⚠️ *(കമ്മിറ്റി വളണ്ടിയർമാർക്ക് മാത്രം)*\n\n📌 *${program.name}*\n📍 ${program.venue}\n📅 ${format(new Date(program.program_date), 'dd MMM yyyy')}\n\n👉 അംഗങ്ങളുടെ മൊബൈൽ നമ്പർ അടിച്ച് ഹാജർ രേഖപ്പെടുത്താൻ:\n🔗 ${url}\n\n_(ശ്രദ്ധിക്കുക: ഈ ലിങ്ക് പൊതു ഗ്രൂപ്പുകളിൽ ഷെയർ ചെയ്യരുത്. ഡെസ്കിലുള്ള കമ്മിറ്റി അംഗങ്ങൾ മാത്രം ഉപയോഗിക്കുക)_`
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')
   }
 
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(url)}`
-  const qrBoardImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(boardUrl)}`
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
@@ -708,8 +708,8 @@ function MeetingShareModal({
               <Share2 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-base leading-tight">Shareable Links</h3>
-              <p className="text-xs text-emerald-100">WhatsApp Links, QR Codes & Attendance Board</p>
+              <h3 className="font-bold text-base leading-tight">Meeting Share Options</h3>
+              <p className="text-xs text-emerald-100">കമ്മിറ്റി ഡെസ്ക് ലിങ്കും പൊതു ഹാജർ ബോർഡും</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-white transition">
@@ -728,24 +728,73 @@ function MeetingShareModal({
             </div>
           </div>
 
-          {/* ─── LINK 1: Attendance Kiosk ─── */}
-          <div className="border-2 border-emerald-200 rounded-2xl overflow-hidden">
-            <div className="bg-emerald-50 px-4 py-2.5 border-b border-emerald-200">
-              <p className="text-xs font-black text-emerald-700 uppercase tracking-wider">🔗 Attendance Kiosk Link — ഹാജർ രേഖപ്പെടുത്തൽ</p>
-              <p className="text-[11px] text-emerald-600 mt-0.5">Members use this to mark their attendance</p>
+          {/* ─── OPTION 1: PUBLIC ATTENDANCE BOARD (FOR WHATSAPP GROUPS) ─── */}
+          <div className="border-2 border-emerald-300 bg-emerald-50/30 rounded-2xl overflow-hidden shadow-sm">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                  <LayoutList className="w-4 h-4" /> 1. പൊതു ഹാജർ ബോർഡ് (എല്ലാവർക്കും കാണാൻ)
+                </p>
+                <p className="text-[11px] text-emerald-100 mt-0.5">
+                  ✅ പൊതു ഗ്രൂപ്പുകളിൽ ഷെയർ ചെയ്യാം (Read-Only • എഡിറ്റ് ചെയ്യാനാകില്ല)
+                </p>
+              </div>
+              <span className="badge bg-white/20 text-white text-[10px] font-bold">100% SAFE</span>
             </div>
             <div className="p-4 space-y-3">
-              {/* QR Code */}
-              <div className="text-center p-3 bg-surface-50 rounded-xl border border-surface-100">
-                <img
-                  src={qrImageUrl}
-                  alt="Kiosk QR Code"
-                  className="w-32 h-32 mx-auto rounded-xl shadow-sm border border-surface-200 bg-white p-2"
+              <p className="text-xs text-emerald-900 leading-relaxed font-medium">
+                ഈ ലിങ്ക് വഴി അംഗങ്ങൾക്കും പ്രവർത്തകർക്കും മീറ്റിംഗിൽ ആരൊക്കെ ഹാജരായി എന്ന വിവരവും ശാഖാ അടിസ്ഥാനത്തിലുള്ള കണക്കുകളും തത്സമയം കാണാം. ഇതിലൂടെ ആർക്കും ഹാജർ രേഖപ്പെടുത്താൻ കഴിയില്ല.
+              </p>
+
+              {/* Copy Board URL */}
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={boardUrl}
+                  className="input text-xs font-mono select-all bg-white text-emerald-900 border-emerald-200"
                 />
-                <p className="text-[11px] font-semibold text-surface-500 mt-2 flex items-center justify-center gap-1">
-                  <QrCode className="w-3.5 h-3.5 text-primary-600" />
-                  Scan to mark attendance
+                <button
+                  onClick={copyBoardUrl}
+                  className={clsx(
+                    'btn btn-sm font-bold px-3 transition flex items-center gap-1 whitespace-nowrap',
+                    boardCopied ? 'btn-success' : 'btn-secondary'
+                  )}
+                >
+                  {boardCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span>{boardCopied ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+
+              {/* Primary WhatsApp button to share board in general groups */}
+              <button
+                onClick={shareWhatsApp}
+                className="w-full py-3 bg-[#25D366] hover:bg-[#20ba59] text-white font-black text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>പൊതു ഗ്രൂപ്പുകളിലേക്ക് ഷെയർ ചെയ്യുക (WhatsApp)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ─── OPTION 2: COMMITTEE DESK ONLY (RESTRICTED) ─── */}
+          <div className="border-2 border-rose-200 bg-rose-50/20 rounded-2xl overflow-hidden">
+            <div className="bg-rose-50 px-4 py-2.5 border-b border-rose-200 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-black text-rose-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-rose-600" /> 2. കമ്മിറ്റി ഡെസ്ക് ലിങ്ക് (ഹാജർ രേഖപ്പെടുത്താൻ)
                 </p>
+                <p className="text-[11px] text-rose-600 mt-0.5">
+                  ⚠️ ഹാജർ രേഖപ്പെടുത്താൻ ചുമതലപ്പെടുത്തിയ കമ്മിറ്റി അംഗങ്ങൾക്ക് മാത്രം
+                </p>
+              </div>
+              <span className="badge badge-red text-[10px] font-bold">DESK ONLY</span>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>സുരക്ഷാ നിർദ്ദേശം:</strong> ഈ ലിങ്ക് പൊതുവാട്സാപ്പ് ഗ്രൂപ്പുകളിൽ നൽകരുത്. രജിസ്ട്രേഷൻ ഡെസ്കിലിരുന്ന് ഹാജർ രേഖപ്പെടുത്തുന്ന കമ്മിറ്റി വളണ്ടിയർമാർക്ക് മാത്രം വ്യക്തിപരമായി അയക്കുക.
+                </span>
               </div>
 
               {/* Copy Kiosk URL */}
@@ -753,7 +802,7 @@ function MeetingShareModal({
                 <input
                   readOnly
                   value={url}
-                  className="input text-xs font-mono select-all bg-surface-100 text-surface-800"
+                  className="input text-xs font-mono select-all bg-white text-surface-800 border-rose-200"
                 />
                 <button
                   onClick={copyUrl}
@@ -768,60 +817,11 @@ function MeetingShareModal({
               </div>
 
               <button
-                onClick={shareWhatsApp}
-                className="w-full py-3 bg-[#25D366] hover:bg-[#20ba59] text-white font-black text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2"
+                onClick={shareDeskToCommitteeWhatsApp}
+                className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow transition active:scale-95 flex items-center justify-center gap-2"
               >
-                <Share2 className="w-4 h-4" />
-                <span>WhatsApp ൽ ഷെയർ ചെയ്യുക</span>
-              </button>
-            </div>
-          </div>
-
-          {/* ─── LINK 2: Attendance Board (View Only) ─── */}
-          <div className="border-2 border-amber-200 rounded-2xl overflow-hidden">
-            <div className="bg-amber-50 px-4 py-2.5 border-b border-amber-200">
-              <p className="text-xs font-black text-amber-700 uppercase tracking-wider">📋 Attendance Board — ഹാജർ പട്ടിക</p>
-              <p className="text-[11px] text-amber-600 mt-0.5">Share this to let everyone see who attended (read-only)</p>
-            </div>
-            <div className="p-4 space-y-3">
-              {/* Board QR Code */}
-              <div className="text-center p-3 bg-amber-50/50 rounded-xl border border-amber-100">
-                <img
-                  src={qrBoardImageUrl}
-                  alt="Board QR Code"
-                  className="w-32 h-32 mx-auto rounded-xl shadow-sm border border-amber-200 bg-white p-2"
-                />
-                <p className="text-[11px] font-semibold text-amber-600 mt-2 flex items-center justify-center gap-1">
-                  <LayoutList className="w-3.5 h-3.5" />
-                  Scan to view attendance list
-                </p>
-              </div>
-
-              {/* Copy Board URL */}
-              <div className="flex gap-2">
-                <input
-                  readOnly
-                  value={boardUrl}
-                  className="input text-xs font-mono select-all bg-amber-50 text-amber-800 border-amber-200"
-                />
-                <button
-                  onClick={copyBoardUrl}
-                  className={clsx(
-                    'btn btn-sm font-bold px-3 transition flex items-center gap-1 whitespace-nowrap',
-                    boardCopied ? 'btn-success' : 'bg-amber-100 hover:bg-amber-200 text-amber-700 border border-amber-300'
-                  )}
-                >
-                  {boardCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  <span>{boardCopied ? 'Copied' : 'Copy'}</span>
-                </button>
-              </div>
-
-              <button
-                onClick={shareBoardWhatsApp}
-                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-white font-black text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2"
-              >
-                <Share2 className="w-4 h-4" />
-                <span>ഹാജർ പട്ടിക WhatsApp ൽ ഷെയർ ചെയ്യുക</span>
+                <Share2 className="w-3.5 h-3.5" />
+                <span>കമ്മിറ്റി വളണ്ടിയർക്ക് വ്യക്തിഗതമായി അയക്കുക</span>
               </button>
             </div>
           </div>
