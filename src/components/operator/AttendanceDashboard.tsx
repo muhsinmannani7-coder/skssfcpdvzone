@@ -6,7 +6,7 @@ import { useToast } from '@/components/shared/Toaster'
 import {
   Search, CheckCircle2, AlertTriangle, Users,
   LogOut, Phone, Hash, Loader2,
-  RefreshCw, Clock, X, Volume2, VolumeX, ShieldCheck
+  RefreshCw, Clock, X, Volume2, VolumeX, ShieldCheck, Share2
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -78,7 +78,10 @@ export default function OperatorAttendanceDashboard() {
   const [selectedProgramId, setSelectedProgramId] = useState<string>('')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [lastMarkedInfo, setLastMarkedInfo] = useState<{
+    memberId: string
     memberName: string
+    mobile?: string
+    membershipNumber?: string | null
     time: string
     status: 'success' | 'duplicate'
     message?: string
@@ -197,7 +200,10 @@ export default function OperatorAttendanceDashboard() {
         if (soundEnabled) playBeep('duplicate')
         if (navigator.vibrate) navigator.vibrate([100, 50, 100])
         setLastMarkedInfo({
+          memberId,
           memberName: member?.full_name || 'Member',
+          mobile: member?.mobile,
+          membershipNumber: member?.membership_number,
           time: nowStr,
           status: 'duplicate',
           message: res.error || 'Attendance already marked for this member!',
@@ -207,7 +213,10 @@ export default function OperatorAttendanceDashboard() {
         if (soundEnabled) playBeep('success')
         if (navigator.vibrate) navigator.vibrate([80])
         setLastMarkedInfo({
+          memberId,
           memberName: member?.full_name || 'Member',
+          mobile: member?.mobile,
+          membershipNumber: member?.membership_number,
           time: nowStr,
           status: 'success',
         })
@@ -345,33 +354,51 @@ export default function OperatorAttendanceDashboard() {
             {lastMarkedInfo && (
               <div
                 className={clsx(
-                  'card p-3 border-2 animate-bounce-in flex items-center justify-between gap-3',
+                  'card p-3 border-2 animate-bounce-in flex flex-col sm:flex-row sm:items-center justify-between gap-3',
                   lastMarkedInfo.status === 'success'
                     ? 'border-green-400 bg-green-50 text-green-900'
                     : 'border-amber-400 bg-amber-50 text-amber-900'
                 )}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
                   {lastMarkedInfo.status === 'success' ? (
                     <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0" />
                   ) : (
                     <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0" />
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-bold leading-tight">
                       {lastMarkedInfo.status === 'success' ? 'ATTENDANCE MARKED!' : 'ALREADY MARKED!'}
                     </p>
-                    <p className="text-xs opacity-90">
+                    <p className="text-xs opacity-90 truncate">
                       {lastMarkedInfo.memberName} • {lastMarkedInfo.time}
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setLastMarkedInfo(null)}
-                  className="p-1 rounded-md opacity-60 hover:opacity-100"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  {lastMarkedInfo.status === 'success' && lastMarkedInfo.mobile && currentProgram && (
+                    <button
+                      onClick={() => {
+                        const clean = (lastMarkedInfo.mobile || '').replace(/\D/g, '')
+                        const phone = clean.length === 10 ? `91${clean}` : clean
+                        const msg = `*SKSSF ചപ്പാരപ്പടവ് മേഖല*\n━━━━━━━━━━━━━━━━━━━━\nപ്രിയ *${lastMarkedInfo.memberName}*, 🌹\n${lastMarkedInfo.membershipNumber ? `🆔 മെമ്പർഷിപ്പ് നമ്പർ: *${lastMarkedInfo.membershipNumber}*\n` : ''}\nഇന്ന് നടന്ന *${currentProgram.name}* മീറ്റിംഗിൽ പങ്കെടുത്തതിന് ഹൃദയം നിറഞ്ഞ നന്ദി രേഖപ്പെടുത്തുന്നു.\n\n📅 *തീയതി:* ${new Date(currentProgram.program_date).toLocaleDateString('en-GB')}\n⏰ *സമയം:* ${currentProgram.start_time || lastMarkedInfo.time}\n📍 *സ്ഥലം:* ${currentProgram.venue}\n\n_"വിദ്യാർത്ഥി നന്മ, സമൂഹ പുരോഗതി"_\n*SKSSF ചപ്പാരപ്പടവ് മേഖല കമ്മിറ്റി*\n━━━━━━━━━━━━━━━━━━━━`
+                        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>WhatsApp നന്ദി സന്ദേശം</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setLastMarkedInfo(null)}
+                    className="p-1 rounded-md opacity-60 hover:opacity-100"
+                    title="Dismiss"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
 
