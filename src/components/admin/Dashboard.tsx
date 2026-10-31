@@ -3,10 +3,12 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase, type Program } from '@/lib/supabase'
 import {
   Users, Building2, CalendarCheck, CheckCircle,
-  Star, ClipboardList, Award, Sparkles, Monitor
+  Star, ClipboardList, Award, Sparkles, Monitor,
+  Share2, Copy, ExternalLink, Plus, Check
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { clsx } from 'clsx'
+import { useToast } from '@/components/shared/Toaster'
 import LiveAttendanceMonitorModal from './LiveAttendanceMonitorModal'
 
 function StatCard({ icon: Icon, label, value, sub, color, to }: {
@@ -31,7 +33,9 @@ function StatCard({ icon: Icon, label, value, sub, color, to }: {
 }
 
 export default function AdminDashboard() {
+  const toast = useToast()
   const [monitorOpen, setMonitorOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: async () => {
@@ -111,7 +115,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Active Program Banner */}
-      {stats?.activeProgram && (
+      {stats?.activeProgram ? (
         <div className="bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 rounded-3xl p-6 text-white shadow-xl animate-fade-in space-y-4 border border-emerald-400/30">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -147,8 +151,65 @@ export default function AdminDashboard() {
             </p>
           </div>
 
+          {/* Direct Shareable Link Card */}
+          <div className="bg-black/30 border border-white/15 rounded-2xl p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+              <span className="font-bold text-emerald-300">
+                📢 ഹാജർ രേഖപ്പെടുത്താനുള്ള ലിങ്ക് (Attendance Link):
+              </span>
+              <span className="text-emerald-200 text-[11px]">
+                (പ്രത്യേക പാസ്‌വേർഡ് ആവശ്യമില്ല — മൊബൈൽ നമ്പർ നൽകി OK കൊടുത്താൽ മതി)
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                readOnly
+                value={`${window.location.origin}/attend/${stats.activeProgram.id}`}
+                className="flex-1 min-w-[200px] bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs font-mono text-white select-all outline-none"
+              />
+
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/attend/${stats.activeProgram!.id}`
+                  navigator.clipboard.writeText(url)
+                  setCopied(true)
+                  toast.success('Attendance link copied to clipboard!')
+                  setTimeout(() => setCopied(false), 2000)
+                }}
+                className="btn bg-white/20 hover:bg-white/30 text-white text-xs font-bold py-2 px-3 rounded-xl transition flex items-center gap-1.5"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copied' : 'Copy Link'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  const p = stats.activeProgram!
+                  const url = `${window.location.origin}/attend/${p.id}`
+                  const text = `*SKSSF ചപ്പാരപ്പടവ് മേഖല*\n📢 *മീറ്റിംഗ് ഹാജർ രേഖപ്പെടുത്തൽ (ATTENDANCE)*\n\n📌 *${p.name}*\n📍 *സ്ഥലം (Venue):* ${p.venue}\n\n👉 യോഗത്തിൽ പങ്കെടുത്തവർ താഴെ നൽകിയ ലിങ്കിൽ മൊബൈൽ നമ്പർ നൽകി ഹാജർ കൺഫോം ചെയ്യുക:\n🔗 ${url}\n\n(പ്രത്യേക പാസ്‌വേർഡ് ആവശ്യമില്ല. മൊബൈൽ നമ്പർ നൽകി കൺഫോം ചെയ്യുക)`
+                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')
+                }}
+                className="btn bg-[#25D366] hover:bg-[#20ba59] text-white text-xs font-black py-2 px-3.5 rounded-xl shadow-md transition flex items-center gap-1.5"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>വാട്‌സാപ്പിൽ ഷെയർ ചെയ്യുക</span>
+              </button>
+
+              <a
+                href={`/attend/${stats.activeProgram.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="btn bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold py-2 px-3 rounded-xl transition flex items-center gap-1.5"
+              >
+                <span>ഹാജർ പേജ് തുറക്കുക</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+
           {activeProgramStats && (
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/20">
+            <div className="grid grid-cols-3 gap-4 pt-2 border-t border-white/20">
               <div className="text-center bg-black/20 rounded-xl p-3 border border-white/10">
                 <p className="text-3xl font-black text-white">{activeProgramStats.presentCount}</p>
                 <p className="text-xs text-emerald-200 mt-0.5">Present (ഹാജർ)</p>
@@ -165,6 +226,29 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+        </div>
+      ) : (
+        /* Empty Program Prompt */
+        <div className="card p-6 border-2 border-dashed border-emerald-400/50 bg-gradient-to-r from-emerald-50/60 to-teal-50/60 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-emerald-600/20">
+              <CalendarCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-black text-lg text-surface-900">
+                മീറ്റിംഗ് ഹാജർ ലിങ്ക് (Meeting Attendance Link)
+              </h3>
+              <p className="text-sm text-surface-600 mt-0.5">
+                നിലവിൽ സജീവമായ മീറ്റിംഗുകൾ ഇല്ല. പുതിയ മീറ്റിംഗ് ആരംഭിച്ച് വാട്‌സാപ്പിൽ ഷെയർ ചെയ്യാവുന്ന ഹാജർ ലിങ്ക് ഉടൻ നേടുക!
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/admin/programs"
+            className="btn btn-primary font-black whitespace-nowrap shadow-md shadow-primary-600/20 px-5 py-3"
+          >
+            <Plus className="w-4 h-4" /> പുതിയ മീറ്റിംഗ് ആരംഭിക്കുക (Start Meeting)
+          </Link>
         </div>
       )}
 

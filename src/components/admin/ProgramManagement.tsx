@@ -5,7 +5,7 @@ import { useToast } from '@/components/shared/Toaster'
 import {
   Plus, Play, Square, CalendarCheck, MapPin, Clock, X, Save,
   Loader2, AlertTriangle, Share2, Copy, ExternalLink, Monitor,
-  RotateCcw, Sparkles, Check, QrCode
+  RotateCcw, Sparkles, Check, QrCode, LayoutList
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { format } from 'date-fns'
@@ -145,8 +145,9 @@ export default function ProgramManagement() {
   const handleCopyLink = (p: Program) => {
     const url = `${window.location.origin}/attend/${p.id}`
     navigator.clipboard.writeText(url)
-    toast.success('Attendance link copied to clipboard!')
+    toast.success('Attendance link copied!')
   }
+
 
 
   const activeProgram = programs.find(p => p.status === 'active')
@@ -229,6 +230,7 @@ export default function ProgramManagement() {
             </p>
           </div>
 
+          {/* Live Banner – links + action buttons */}
           <div className="bg-black/30 border border-white/10 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2 truncate">
               <span className="font-semibold text-emerald-300">Public Attendance Link:</span>
@@ -249,7 +251,15 @@ export default function ProgramManagement() {
                 rel="noreferrer"
                 className="text-emerald-200 hover:text-white underline font-semibold flex items-center gap-1"
               >
-                Open Member Kiosk <ExternalLink className="w-3.5 h-3.5" />
+                Open Kiosk <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <a
+                href={`/board/${activeProgram.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-amber-200 hover:text-white underline font-semibold flex items-center gap-1"
+              >
+                View Board <LayoutList className="w-3.5 h-3.5" />
               </a>
             </div>
           </div>
@@ -428,9 +438,16 @@ function ProgramCard({
             </p>
           )}
 
-          {/* Quick link display */}
-          <div className="mt-3 flex items-center gap-2 text-xs font-mono text-surface-500 bg-surface-100/80 px-2.5 py-1.5 rounded-lg max-w-lg truncate">
-            <span className="truncate">{window.location.origin}/attend/{program.id}</span>
+          {/* Quick links display */}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <div className="flex items-center gap-2 text-xs font-mono text-surface-500 bg-surface-100/80 px-2.5 py-1.5 rounded-lg truncate">
+              <span className="text-emerald-600 font-semibold">🔗</span>
+              <span className="truncate">/attend/{program.id}</span>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-mono text-surface-500 bg-amber-50 px-2.5 py-1.5 rounded-lg truncate border border-amber-100">
+              <span className="text-amber-600 font-semibold">📋</span>
+              <span className="truncate">/board/{program.id}</span>
+            </div>
           </div>
         </div>
 
@@ -456,15 +473,27 @@ function ProgramCard({
             <span>WhatsApp</span>
           </button>
 
-          {/* Copy link */}
+          {/* Copy Kiosk link */}
           <button
             onClick={onCopyLink}
             className="btn btn-secondary btn-sm"
-            title="Copy attendance link"
+            title="Copy attendance kiosk link"
           >
             <Copy className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Copy Link</span>
+            <span className="hidden sm:inline">Kiosk Link</span>
           </button>
+
+          {/* View Board */}
+          <a
+            href={`/board/${program.id}`}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-sm bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 font-bold"
+            title="Open public attendance board"
+          >
+            <LayoutList className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">View Board</span>
+          </a>
 
           {/* Projector mode */}
           <button
@@ -638,34 +667,49 @@ function MeetingShareModal({
 }) {
   const toast = useToast()
   const [copied, setCopied] = useState(false)
+  const [boardCopied, setBoardCopied] = useState(false)
   const url = `${window.location.origin}/attend/${program.id}`
+  const boardUrl = `${window.location.origin}/board/${program.id}`
 
   const copyUrl = () => {
     navigator.clipboard.writeText(url)
     setCopied(true)
-    toast.success('Attendance link copied to clipboard!')
+    toast.success('Attendance kiosk link copied!')
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const copyBoardUrl = () => {
+    navigator.clipboard.writeText(boardUrl)
+    setBoardCopied(true)
+    toast.success('Attendance board link copied! Share this to show who attended.')
+    setTimeout(() => setBoardCopied(false), 2000)
+  }
+
   const shareWhatsApp = () => {
-    const text = `*SKSSF ചപ്പാരപ്പടവ് മേഖല*\n📢 *മീറ്റിംഗ് ഹാജർ രേഖപ്പെടുത്തൽ (ATTENDANCE)*\n\n📌 *${program.name}*\n📍 *സ്ഥലം (Venue):* ${program.venue}\n📅 *തീയതി (Date):* ${format(new Date(program.program_date), 'dd MMM yyyy')}\n\n👉 യോഗത്തിൽ പങ്കെടുത്തവർ താഴെ നൽകിയ ലിങ്കിൽ മൊബൈൽ നമ്പർ നൽകി ഹാജർ കൺഫോം ചെയ്യുക:\n🔗 ${url}\n\n(പ്രത്യേക പാസ്‌വേർഡ് ആവശ്യമില്ല. മൊബൈൽ നമ്പർ നൽകി കൺഫോം ചെയ്യുക)`
+    const text = `*SKSSF ചപ്പാരപ്പടവ് മേഖല*\n📢 *മീറ്റിംഗ് ഹാജർ രേഖപ്പെടുത്തൽ (ATTENDANCE)*\n\n📌 *${program.name}*\n📍 *സ്ഥലം (Venue):* ${program.venue}\n📅 *തീയതി (Date):* ${format(new Date(program.program_date), 'dd MMM yyyy')}\n\n👉 ഹാജർ രേഖപ്പെടുത്താൻ (To Mark Attendance):\n🔗 ${url}\n\n👁️ ഹാജർ പട്ടിക കാണാൻ (View Attendance Board):\n📋 ${boardUrl}\n\n(പ്രത്യേക പാസ്‌വേർഡ് ആവശ്യമില്ല. മൊബൈൽ നമ്പർ നൽകി കൺഫോം ചെയ്യുക)`
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')
+  }
+
+  const shareBoardWhatsApp = () => {
+    const text = `*SKSSF ചപ്പാരപ്പടവ് മേഖല*\n📋 *ഹാജർ പട്ടിക – ${program.name}*\n📍 ${program.venue} • 📅 ${format(new Date(program.program_date), 'dd MMM yyyy')}\n\n👉 ഹാജരായ അംഗങ്ങളുടെ പട്ടിക ഇവിടെ കാണാം:\n${boardUrl}`
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')
   }
 
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(url)}`
+  const qrBoardImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(boardUrl)}`
 
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-md animate-fade-in">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden text-surface-900 border border-surface-200 animate-scale-up">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden text-surface-900 border border-surface-200 animate-scale-up max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="p-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
+        <div className="p-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
               <Share2 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-base leading-tight">Shareable Attendance Link</h3>
-              <p className="text-xs text-emerald-100">WhatsApp Link & QR Code</p>
+              <h3 className="font-bold text-base leading-tight">Shareable Links</h3>
+              <p className="text-xs text-emerald-100">WhatsApp Links, QR Codes & Attendance Board</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 text-white transition">
@@ -684,70 +728,123 @@ function MeetingShareModal({
             </div>
           </div>
 
-          {/* QR Code */}
-          <div className="text-center p-4 bg-surface-50 rounded-2xl border border-surface-200">
-            <img
-              src={qrImageUrl}
-              alt="QR Code"
-              className="w-40 h-40 mx-auto rounded-xl shadow-sm border border-surface-200 bg-white p-2"
-            />
-            <p className="text-[11px] font-semibold text-surface-500 mt-2 flex items-center justify-center gap-1">
-              <QrCode className="w-3.5 h-3.5 text-primary-600" />
-              Scan QR code to open attendance check-in
-            </p>
-          </div>
+          {/* ─── LINK 1: Attendance Kiosk ─── */}
+          <div className="border-2 border-emerald-200 rounded-2xl overflow-hidden">
+            <div className="bg-emerald-50 px-4 py-2.5 border-b border-emerald-200">
+              <p className="text-xs font-black text-emerald-700 uppercase tracking-wider">🔗 Attendance Kiosk Link — ഹാജർ രേഖപ്പെടുത്തൽ</p>
+              <p className="text-[11px] text-emerald-600 mt-0.5">Members use this to mark their attendance</p>
+            </div>
+            <div className="p-4 space-y-3">
+              {/* QR Code */}
+              <div className="text-center p-3 bg-surface-50 rounded-xl border border-surface-100">
+                <img
+                  src={qrImageUrl}
+                  alt="Kiosk QR Code"
+                  className="w-32 h-32 mx-auto rounded-xl shadow-sm border border-surface-200 bg-white p-2"
+                />
+                <p className="text-[11px] font-semibold text-surface-500 mt-2 flex items-center justify-center gap-1">
+                  <QrCode className="w-3.5 h-3.5 text-primary-600" />
+                  Scan to mark attendance
+                </p>
+              </div>
 
-          {/* Copy Link Input */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-surface-700">Attendance URL:</label>
-            <div className="flex gap-2">
-              <input
-                readOnly
-                value={url}
-                className="input text-xs font-mono select-all bg-surface-100 text-surface-800"
-              />
+              {/* Copy Kiosk URL */}
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={url}
+                  className="input text-xs font-mono select-all bg-surface-100 text-surface-800"
+                />
+                <button
+                  onClick={copyUrl}
+                  className={clsx(
+                    'btn btn-sm font-bold px-3 transition flex items-center gap-1 whitespace-nowrap',
+                    copied ? 'btn-success' : 'btn-secondary'
+                  )}
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+
               <button
-                onClick={copyUrl}
-                className={clsx(
-                  'btn btn-sm font-bold px-3 transition flex items-center gap-1',
-                  copied ? 'btn-success' : 'btn-secondary'
-                )}
+                onClick={shareWhatsApp}
+                className="w-full py-3 bg-[#25D366] hover:bg-[#20ba59] text-white font-black text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2"
               >
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                <span>{copied ? 'Copied' : 'Copy'}</span>
+                <Share2 className="w-4 h-4" />
+                <span>WhatsApp ൽ ഷെയർ ചെയ്യുക</span>
               </button>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-2.5 pt-2">
+          {/* ─── LINK 2: Attendance Board (View Only) ─── */}
+          <div className="border-2 border-amber-200 rounded-2xl overflow-hidden">
+            <div className="bg-amber-50 px-4 py-2.5 border-b border-amber-200">
+              <p className="text-xs font-black text-amber-700 uppercase tracking-wider">📋 Attendance Board — ഹാജർ പട്ടിക</p>
+              <p className="text-[11px] text-amber-600 mt-0.5">Share this to let everyone see who attended (read-only)</p>
+            </div>
+            <div className="p-4 space-y-3">
+              {/* Board QR Code */}
+              <div className="text-center p-3 bg-amber-50/50 rounded-xl border border-amber-100">
+                <img
+                  src={qrBoardImageUrl}
+                  alt="Board QR Code"
+                  className="w-32 h-32 mx-auto rounded-xl shadow-sm border border-amber-200 bg-white p-2"
+                />
+                <p className="text-[11px] font-semibold text-amber-600 mt-2 flex items-center justify-center gap-1">
+                  <LayoutList className="w-3.5 h-3.5" />
+                  Scan to view attendance list
+                </p>
+              </div>
+
+              {/* Copy Board URL */}
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={boardUrl}
+                  className="input text-xs font-mono select-all bg-amber-50 text-amber-800 border-amber-200"
+                />
+                <button
+                  onClick={copyBoardUrl}
+                  className={clsx(
+                    'btn btn-sm font-bold px-3 transition flex items-center gap-1 whitespace-nowrap',
+                    boardCopied ? 'btn-success' : 'bg-amber-100 hover:bg-amber-200 text-amber-700 border border-amber-300'
+                  )}
+                >
+                  {boardCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span>{boardCopied ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+
+              <button
+                onClick={shareBoardWhatsApp}
+                className="w-full py-3 bg-amber-500 hover:bg-amber-400 text-white font-black text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>ഹാജർ പട്ടിക WhatsApp ൽ ഷെയർ ചെയ്യുക</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick action buttons */}
+          <div className="grid grid-cols-2 gap-2">
             <button
-              onClick={shareWhatsApp}
-              className="w-full py-3.5 bg-[#25D366] hover:bg-[#20ba59] text-white font-black text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2"
+              onClick={onOpenMonitor}
+              className="py-2.5 px-3 bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
             >
-              <Share2 className="w-4 h-4" />
-              <span>വാട്‌സാപ്പിൽ ഷെയർ ചെയ്യുക (Share on WhatsApp)</span>
+              <Sparkles className="w-4 h-4 text-primary-600" />
+              <span>Live Monitor</span>
             </button>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={onOpenMonitor}
-                className="py-2.5 px-3 bg-primary-50 hover:bg-primary-100 text-primary-700 border border-primary-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
-              >
-                <Sparkles className="w-4 h-4 text-primary-600" />
-                <span>Live Monitor</span>
-              </button>
-
-              <a
-                href={url}
-                target="_blank"
-                rel="noreferrer"
-                className="py-2.5 px-3 bg-surface-100 hover:bg-surface-200 text-surface-700 border border-surface-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
-              >
-                <span>Open Kiosk</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="py-2.5 px-3 bg-surface-100 hover:bg-surface-200 text-surface-700 border border-surface-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+            >
+              <span>Open Kiosk</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
           </div>
         </div>
       </div>

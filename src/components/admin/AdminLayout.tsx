@@ -5,7 +5,7 @@ import { ToastProvider } from '@/components/shared/Toaster'
 import {
   LayoutDashboard, Users, Building2, CalendarCheck,
   ClipboardList, BarChart3, History, Settings, LogOut, Menu, X,
-  ChevronRight, Star, Shield
+  ChevronRight, Star, Shield, ExternalLink
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -27,7 +27,7 @@ const navItems = [
   { path: 'leaderboard', icon: Trophy, label: 'Leaderboard & Points' },
   { path: 'members', icon: Users, label: 'Members' },
   { path: 'committees', icon: Building2, label: 'Committees & Units' },
-  { path: 'programs', icon: CalendarCheck, label: 'Programs' },
+  { path: 'programs', icon: CalendarCheck, label: 'Meetings & Attendance' },
   { path: 'operators', icon: ClipboardList, label: 'Operators' },
   { path: 'subwings', icon: Star, label: 'Sub-Wings' },
   { path: 'reports', icon: BarChart3, label: 'Reports' },
@@ -79,6 +79,20 @@ export default function AdminLayout() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Quick Attendance Link in Sidebar */}
+      <div className="px-3 pb-3">
+        <a
+          href="/attend"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs font-bold shadow-md hover:from-emerald-500 hover:to-teal-600 transition"
+        >
+          <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+          <span className="flex-1">Live Attendance Link</span>
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      </div>
 
       {/* User info */}
       <div className="px-3 py-4 border-t border-surface-200">

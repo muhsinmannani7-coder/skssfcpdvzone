@@ -8,6 +8,7 @@ import AdminLayout from '@/components/admin/AdminLayout'
 import OperatorDashboard from '@/components/operator/AttendanceDashboard'
 import LoadingScreen from '@/components/shared/LoadingScreen'
 import PublicMeetingAttendance from '@/components/public/PublicMeetingAttendance'
+import PublicAttendanceBoard from '@/components/public/PublicAttendanceBoard'
 import LiveMeetingProjector from '@/components/admin/LiveMeetingProjector'
 
 const queryClient = new QueryClient({
@@ -25,8 +26,14 @@ function AppRoutes() {
   return (
     <Routes>
       {/* 1. Public Kiosk / WhatsApp Attendance Links (No Login Required) */}
+      <Route path="/attend" element={<PublicMeetingAttendance />} />
       <Route path="/attend/:id" element={<PublicMeetingAttendance />} />
+      <Route path="/m" element={<PublicMeetingAttendance />} />
       <Route path="/m/:id" element={<PublicMeetingAttendance />} />
+      <Route path="/live" element={<PublicMeetingAttendance />} />
+
+      {/* 1b. Public Attendance Board — Shareable read-only attendance list */}
+      <Route path="/board/:id" element={<PublicAttendanceBoard />} />
 
       {/* 2. Fullscreen Live Projector / Display Mode */}
       <Route path="/admin/projector/:id" element={<LiveMeetingProjector />} />

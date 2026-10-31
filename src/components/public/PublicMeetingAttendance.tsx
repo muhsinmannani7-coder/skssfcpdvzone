@@ -66,35 +66,48 @@ export default function PublicMeetingAttendance() {
 
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // 1. Fetch Program Info
+  // 1. Fetch Program Info (by ID or find active)
   const { data: program, isLoading: programLoading } = useQuery({
-    queryKey: ['public-program', programId],
+    queryKey: ['public-program', programId || 'active'],
     queryFn: async () => {
-      if (!programId) throw new Error('Program ID required')
+      if (programId) {
+        const { data, error } = await supabase
+          .from('programs')
+          .select('*')
+          .eq('id', programId)
+          .single()
+        if (error) throw error
+        return data as Program
+      }
+
+      // If no programId in URL, automatically fetch current live meeting
       const { data, error } = await supabase
         .from('programs')
         .select('*')
-        .eq('id', programId)
-        .single()
+        .eq('status', 'active')
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
       if (error) throw error
-      return data as Program
+      return data as Program | null
     },
-    enabled: !!programId,
     refetchInterval: 10000, // keep updated if admin closes or reopens
   })
 
+  const activeProgramId = programId || program?.id
+
   // 2. Fetch live attendance count
   const { data: attendanceCount = 0 } = useQuery({
-    queryKey: ['public-attendance-count', programId],
+    queryKey: ['public-attendance-count', activeProgramId],
     queryFn: async () => {
-      if (!programId) return 0
+      if (!activeProgramId) return 0
       const { count } = await supabase
         .from('attendance')
         .select('id', { count: 'exact' })
-        .eq('program_id', programId)
+        .eq('program_id', activeProgramId)
       return count ?? 0
     },
-    enabled: !!programId,
+    enabled: !!activeProgramId,
     refetchInterval: 5000,
   })
 
@@ -131,11 +144,13 @@ export default function PublicMeetingAttendance() {
         return
       }
 
+      if (!activeProgramId) return
+
       // Check if already marked for this program
       const { data: existingAttendance } = await supabase
         .from('attendance')
         .select('marked_at')
-        .eq('program_id', programId!)
+        .eq('program_id', activeProgramId)
         .eq('member_id', memberData.id)
         .maybeSingle()
 
@@ -196,12 +211,12 @@ export default function PublicMeetingAttendance() {
   // Confirm attendance mutation
   const confirmMutation = useMutation({
     mutationFn: async (memberId: string) => {
-      if (!programId) throw new Error('Missing program ID')
+      if (!activeProgramId) throw new Error('Missing program ID')
 
       // Use RPC if available
       const { data: rpcData, error: rpcError } = await supabase
         .rpc('public_record_attendance', {
-          p_program_id: programId,
+          p_program_id: activeProgramId,
           p_member_id: memberId,
         })
 
@@ -216,7 +231,7 @@ export default function PublicMeetingAttendance() {
       const { data: insertData, error: insertError } = await supabase
         .from('attendance')
         .insert({
-          program_id: programId,
+          program_id: activeProgramId,
           member_id: memberId,
         })
         .select()
@@ -233,7 +248,7 @@ export default function PublicMeetingAttendance() {
     onSuccess: () => {
       playSuccessChime()
       setSuccessResult({ name: member?.full_name || 'Member' })
-      qc.invalidateQueries({ queryKey: ['public-attendance-count', programId] })
+      qc.invalidateQueries({ queryKey: ['public-attendance-count', activeProgramId] })
 
       // Auto countdown 1 second for rapid next-person check-in
       setCountdown(1)
@@ -287,15 +302,26 @@ export default function PublicMeetingAttendance() {
   if (!program) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 max-w-md w-full text-center text-white">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-          <h2 className="text-xl font-bold">Meeting Not Found</h2>
-          <p className="text-slate-400 text-sm mt-2">
-            The meeting link you opened does not exist or has been removed.
+        <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 max-w-md w-full text-center text-white space-y-4">
+          <AlertCircle className="w-12 h-12 text-amber-400 mx-auto" />
+          <h2 className="text-xl font-bold">നിലവിൽ ലൈവ് മീറ്റിംഗ് ലഭ്യമല്ല</h2>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            സജീവമായ മീറ്റിംഗുകൾ ഒന്നും കണ്ടെത്തിയില്ല. അഡ്മിൻ മീറ്റിംഗ് ആരംഭിച്ച് ലിങ്ക് ഷെയർ ചെയ്യുമ്പോൾ ഈ ലിങ്കിൽ തത്സമയം ഹാജർ രേഖപ്പെടുത്താവുന്നതാണ്.
           </p>
-          <Link to="/" className="inline-block mt-5 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition">
-            Go to Home
-          </Link>
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition w-full sm:w-auto justify-center"
+            >
+              <RefreshCw className="w-4 h-4" /> റീഫ്രഷ് ചെയ്യുക (Refresh)
+            </button>
+            <Link
+              to="/admin/login"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-xl text-sm font-medium transition w-full sm:w-auto justify-center"
+            >
+              <Lock className="w-4 h-4" /> Admin Login
+            </Link>
+          </div>
         </div>
       </div>
     )
