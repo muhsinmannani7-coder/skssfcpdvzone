@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase, type Program } from '@/lib/supabase'
 import {
-  Shield, Users, Award, MapPin, Calendar, Clock,
-  RefreshCw, AlertCircle, CheckCircle2, Lock,
-  Star, Layers, Trophy
+  Shield, Users, MapPin, Calendar, Clock,
+  RefreshCw, AlertCircle, Lock,
+  Star, Layers, Trophy, Sun, Moon, Palette, Check, Sparkles
 } from 'lucide-react'
+import { clsx } from 'clsx'
 import { format } from 'date-fns'
 
 interface AttendeeRecord {
@@ -30,8 +32,22 @@ interface ZonePointsSummary {
   }[]
 }
 
+export type BoardTheme = 'dark' | 'light' | 'emerald'
+
 export default function PublicAttendanceBoard() {
   const { id: programId } = useParams<{ id: string }>()
+
+  // Theme State
+  const [theme, setTheme] = useState<BoardTheme>(() => {
+    return (localStorage.getItem('skssf_board_theme') as BoardTheme) || 'dark'
+  })
+  const [showThemeMenu, setShowThemeMenu] = useState(false)
+
+  const changeTheme = (newTheme: BoardTheme) => {
+    setTheme(newTheme)
+    localStorage.setItem('skssf_board_theme', newTheme)
+    setShowThemeMenu(false)
+  }
 
   // Fetch program info
   const { data: program, isLoading: programLoading } = useQuery({
@@ -80,47 +96,44 @@ export default function PublicAttendanceBoard() {
       if (error) throw error
       if (!data) return []
 
-      // Map to structured attendee records
-      interface RawMP {
+      interface RawPos {
         positions?: { title: string } | null
         committees?: { name: string; level: 'zone' | 'cluster' | 'unit' } | null
         clusters?: { name: string } | null
         units?: { name: string; clusters?: { name: string } | null } | null
       }
 
+      // Map to structured attendee records
       return data.map(row => {
         const m = (row.members as unknown) as {
           id: string
           full_name: string
           mobile: string
           membership_number: string | null
-          member_positions: RawMP[]
+          member_positions?: RawPos[]
         } | null
 
         if (!m) return null
 
-        const rawPositions = (m.member_positions as unknown as RawMP[]) || []
+        const rawPositions = m.member_positions || []
         const zonePositions: string[] = []
         const clusterPositions: { title: string; clusterName: string }[] = []
         const unitPositions: { title: string; unitName: string; clusterName: string }[] = []
 
-        rawPositions.forEach(mp => {
-          const level = mp.committees?.level
+        for (const mp of rawPositions) {
+          const title = mp.positions?.title || 'Member'
+          const level = mp.committees?.level || 'unit'
+          const clusterName = mp.clusters?.name || mp.units?.clusters?.name || ''
+          const unitName = mp.units?.name || ''
+
           if (level === 'zone') {
-            zonePositions.push(mp.positions?.title ?? 'Member')
+            zonePositions.push(title)
           } else if (level === 'cluster') {
-            clusterPositions.push({
-              title: mp.positions?.title ?? 'Member',
-              clusterName: mp.clusters?.name ?? '',
-            })
+            clusterPositions.push({ title, clusterName })
           } else if (level === 'unit') {
-            unitPositions.push({
-              title: mp.positions?.title ?? 'Member',
-              unitName: mp.units?.name ?? '',
-              clusterName: mp.units?.clusters?.name ?? mp.clusters?.name ?? '',
-            })
+            unitPositions.push({ title, unitName, clusterName })
           }
-        })
+        }
 
         return {
           attendanceId: row.id,
@@ -139,65 +152,81 @@ export default function PublicAttendanceBoard() {
     refetchInterval: 5000,
   })
 
-  // Zone-level points summary
+  // Fetch cluster wise and zone wise point summary
   const { data: pointsSummary } = useQuery({
     queryKey: ['board-points-summary', programId],
-    queryFn: async (): Promise<ZonePointsSummary> => {
-      if (!programId) return { zonePresent: 0, clusterWise: [] }
+    queryFn: async () => {
+      if (!programId) return null
 
-      // Get present member IDs
-      const { data: attData } = await supabase
+      const { data: attendanceData } = await supabase
         .from('attendance')
         .select('member_id')
         .eq('program_id', programId)
-      const presentIds = new Set((attData || []).map(r => r.member_id))
 
-      // Get all clusters with their counts
+      const presentMemberIds = new Set((attendanceData || []).map(a => a.member_id))
+
       const { data: clusters } = await supabase
         .from('clusters')
         .select('id, name')
-        .eq('is_active', true)
+        .order('name')
 
-      // Count zone officials present (zone committee level members)
-      const { data: zoneMembers } = await supabase
+      const { data: memberPositions } = await supabase
         .from('member_positions')
-        .select('member_id, committees(level)')
+        .select(`
+          member_id,
+          cluster_id,
+          unit_id,
+          committees ( level )
+        `)
         .eq('is_active', true)
-      const zonePresentCount = (zoneMembers || [])
-        .filter(mp => {
+
+      let zonePresent = 0
+      const clusterPresentCounts = new Map<string, Set<string>>()
+      for (const c of clusters || []) {
+        clusterPresentCounts.set(c.id, new Set())
+      }
+
+      for (const mp of memberPositions || []) {
+        if (presentMemberIds.has(mp.member_id)) {
           const c = (mp.committees as unknown) as { level: string } | null
-          return c?.level === 'zone' && presentIds.has(mp.member_id)
-        }).length
-
-      // Cluster-wise breakdown - count officers present per cluster
-      const clusterWise = await Promise.all(
-        (clusters || []).map(async cluster => {
-          const { data: clusterOfficers } = await supabase
-            .from('member_positions')
-            .select('member_id')
-            .eq('cluster_id', cluster.id)
-            .eq('is_active', true)
-
-          const total = clusterOfficers?.length ?? 0
-          const presentCount = (clusterOfficers || [])
-            .filter(co => presentIds.has(co.member_id)).length
-
-          return {
-            clusterId: cluster.id,
-            clusterName: cluster.name,
-            presentCount,
-            totalOfficers: total,
+          if (c?.level === 'zone') {
+            zonePresent++
           }
-        })
-      )
+          if (mp.cluster_id && clusterPresentCounts.has(mp.cluster_id)) {
+            clusterPresentCounts.get(mp.cluster_id)!.add(mp.member_id)
+          }
+        }
+      }
+
+      const clusterWise = (clusters || []).map(c => ({
+        clusterId: c.id,
+        clusterName: c.name,
+        presentCount: clusterPresentCounts.get(c.id)?.size || 0,
+        totalOfficers: 4 * 5 + 4,
+      }))
 
       return {
-        zonePresent: zonePresentCount,
-        clusterWise: clusterWise.filter(c => c.totalOfficers > 0),
-      }
+        zonePresent,
+        clusterWise,
+      } as ZonePointsSummary
     },
     enabled: !!programId,
-    refetchInterval: 10000,
+    refetchInterval: 6000,
+  })
+
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const filteredAttendees = attendees.filter(a => {
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      a.fullName.toLowerCase().includes(q) ||
+      a.mobile.includes(q) ||
+      (a.membershipNumber && a.membershipNumber.toLowerCase().includes(q)) ||
+      a.zonePositions.some(p => p.toLowerCase().includes(q)) ||
+      a.clusterPositions.some(p => p.title.toLowerCase().includes(q) || p.clusterName.toLowerCase().includes(q)) ||
+      a.unitPositions.some(p => p.title.toLowerCase().includes(q) || p.unitName.toLowerCase().includes(q))
+    )
   })
 
   if (programLoading) {
@@ -229,61 +258,149 @@ export default function PublicAttendanceBoard() {
   const totalAttendees = attendees.length
   const hasZoneOfficers = attendees.some(a => a.zonePositions.length > 0)
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-emerald-950 text-white">
-      {/* Ambient background glows */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-32 right-10 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl" />
-      </div>
+  // Theme styles
+  const themes = {
+    dark: {
+      root: 'bg-gradient-to-b from-slate-950 via-slate-900 to-emerald-950 text-white',
+      card: 'bg-white/10 backdrop-blur-xl border border-white/15 text-white',
+      cardSub: 'bg-black/20 border border-white/10 text-white',
+      textPrimary: 'text-white',
+      textSecondary: 'text-slate-300',
+      textMuted: 'text-slate-400',
+      badgeLive: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+      input: 'bg-black/30 border-white/20 text-white placeholder-slate-400',
+      attendeeRow: 'hover:bg-white/5 border-white/5',
+      themeBtn: 'bg-white/10 hover:bg-white/20 text-white border-white/20',
+    },
+    light: {
+      root: 'bg-slate-100 text-slate-900',
+      card: 'bg-white border border-slate-200 shadow-xl text-slate-900',
+      cardSub: 'bg-slate-50 border border-slate-200 text-slate-900',
+      textPrimary: 'text-slate-900',
+      textSecondary: 'text-slate-700',
+      textMuted: 'text-slate-500',
+      badgeLive: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      input: 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-emerald-500',
+      attendeeRow: 'hover:bg-slate-50 border-slate-100',
+      themeBtn: 'bg-white hover:bg-slate-100 text-slate-800 border-slate-300 shadow-sm',
+    },
+    emerald: {
+      root: 'bg-[#062419] text-white',
+      card: 'bg-[#0a3828] border border-emerald-700/60 shadow-2xl text-white',
+      cardSub: 'bg-[#083324] border border-emerald-800 text-white',
+      textPrimary: 'text-white',
+      textSecondary: 'text-emerald-100',
+      textMuted: 'text-emerald-300/80',
+      badgeLive: 'bg-emerald-500/30 text-emerald-300 border-emerald-400/40',
+      input: 'bg-black/30 border-emerald-700/60 text-white placeholder-emerald-300/50',
+      attendeeRow: 'hover:bg-white/5 border-emerald-800/40',
+      themeBtn: 'bg-[#083324] hover:bg-[#0d4532] text-emerald-100 border-emerald-700',
+    },
+  }
 
+  const currentTheme = themes[theme]
+
+  return (
+    <div className={clsx('min-h-screen transition-colors duration-300', currentTheme.root)}>
       <div className="relative max-w-3xl mx-auto px-4 py-6 space-y-5">
-        {/* Header */}
-        <div className="text-center space-y-1">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-lg shadow-emerald-500/20 mb-2 border border-emerald-400/30">
-            <Shield className="w-7 h-7 text-white" />
+        {/* Top Header Bar with Theme Switcher */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 shadow-lg shadow-emerald-500/20 flex items-center justify-center border border-emerald-400/30">
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className={clsx('text-base font-black tracking-tight leading-none', currentTheme.textPrimary)}>SKSSF</h1>
+              <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5">
+                ചപ്പാരപ്പടവ് മേഖല
+              </p>
+            </div>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">SKSSF</h1>
-          <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
-            Chapparappadavu Zone Committee
-          </p>
+
+          {/* Theme Dropdown Toggle */}
+          <div className="relative">
+            <button
+              onClick={() => setShowThemeMenu(!showThemeMenu)}
+              className={clsx('px-3 py-1.5 rounded-xl text-xs font-bold border transition flex items-center gap-1.5', currentTheme.themeBtn)}
+            >
+              <Palette className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="capitalize">{theme} Theme</span>
+            </button>
+
+            {showThemeMenu && (
+              <div className="absolute right-0 mt-2 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-1.5 z-50 animate-scale-up text-slate-800 dark:text-slate-100">
+                <button
+                  onClick={() => changeTheme('dark')}
+                  className={clsx('w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition', theme === 'dark' ? 'bg-emerald-500/20 text-emerald-600 font-bold' : 'hover:bg-slate-100 dark:hover:bg-slate-800')}
+                >
+                  <span className="flex items-center gap-2">
+                    <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>🌙 Dark</span>
+                  </span>
+                  {theme === 'dark' && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                </button>
+
+                <button
+                  onClick={() => changeTheme('light')}
+                  className={clsx('w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition', theme === 'light' ? 'bg-emerald-500/20 text-emerald-600 font-bold' : 'hover:bg-slate-100 dark:hover:bg-slate-800')}
+                >
+                  <span className="flex items-center gap-2">
+                    <Sun className="w-3.5 h-3.5 text-amber-500" />
+                    <span>☀️ Light</span>
+                  </span>
+                  {theme === 'light' && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                </button>
+
+                <button
+                  onClick={() => changeTheme('emerald')}
+                  className={clsx('w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition', theme === 'emerald' ? 'bg-emerald-500/20 text-emerald-600 font-bold' : 'hover:bg-slate-100 dark:hover:bg-slate-800')}
+                >
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>🌿 Emerald</span>
+                  </span>
+                  {theme === 'emerald' && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Meeting Info Card */}
-        <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-5 shadow-2xl">
+        <div className={clsx('rounded-2xl p-5 shadow-xl transition-colors', currentTheme.card)}>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               {program.status === 'active' ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span className={clsx('inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border', currentTheme.badgeLive)}>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                   🔴 LIVE
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-500/20 text-slate-300 border border-slate-500/30">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-500/20 text-slate-500 border border-slate-500/30">
                   🔒 CLOSED
                 </span>
               )}
             </div>
-            <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-300 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+            <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-300 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
               <Users className="w-3.5 h-3.5" />
               {totalAttendees} ഹാജരായി
             </span>
           </div>
 
-          <h2 className="text-xl font-black text-white leading-snug">{program.name}</h2>
+          <h2 className={clsx('text-xl font-black leading-snug', currentTheme.textPrimary)}>{program.name}</h2>
 
-          <div className="grid grid-cols-2 gap-2 mt-3 text-xs text-slate-300 border-t border-white/10 pt-3">
+          <div className={clsx('grid grid-cols-2 gap-2 mt-3 text-xs border-t pt-3', currentTheme.textSecondary)}>
             <div className="flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+              <Calendar className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
               <span>{format(new Date(program.program_date), 'dd MMM yyyy')}</span>
             </div>
             <div className="flex items-center gap-1.5 truncate">
-              <MapPin className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+              <MapPin className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
               <span className="truncate">{program.venue}</span>
             </div>
             {program.start_time && (
               <div className="flex items-center gap-1.5 col-span-2">
-                <Clock className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                <Clock className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
                 <span>സമയം: {program.start_time}</span>
               </div>
             )}
@@ -292,38 +409,37 @@ export default function PublicAttendanceBoard() {
 
         {/* Points Summary Card */}
         {pointsSummary && (
-          <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-5 shadow-2xl space-y-4">
+          <div className={clsx('rounded-2xl p-5 shadow-xl space-y-4 transition-colors', currentTheme.card)}>
             <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-amber-400" />
-              <h3 className="font-black text-base text-white">Points Summary</h3>
+              <Trophy className="w-5 h-5 text-amber-500" />
+              <h3 className={clsx('font-black text-base', currentTheme.textPrimary)}>Points & Statistics</h3>
             </div>
 
             {/* Zone level */}
             <div className="flex items-center justify-between bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3">
               <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-amber-400" />
-                <span className="text-sm font-bold text-amber-200">Zone Committee</span>
+                <Shield className="w-4 h-4 text-amber-500" />
+                <span className="text-sm font-bold text-amber-700 dark:text-amber-200">Zone Leaders</span>
               </div>
-              <span className="text-sm font-black text-amber-300">
-                {pointsSummary.zonePresent} Officer{pointsSummary.zonePresent !== 1 ? 's' : ''} Present
+              <span className="text-sm font-black text-amber-600 dark:text-amber-300">
+                {pointsSummary.zonePresent} Present
               </span>
             </div>
 
             {/* Cluster-wise breakdown */}
             {pointsSummary.clusterWise.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <p className={clsx('text-[11px] font-bold uppercase tracking-wider flex items-center gap-1', currentTheme.textMuted)}>
                   <Layers className="w-3.5 h-3.5" /> Cluster-wise Attendance
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {pointsSummary.clusterWise.map(c => (
                     <div key={c.clusterId} className="bg-purple-500/10 border border-purple-500/20 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Star className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
-                        <span className="text-xs font-semibold text-purple-200 truncate">{c.clusterName}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-purple-700 dark:text-purple-200 truncate">{c.clusterName}</p>
                       </div>
-                      <span className="text-xs font-black text-purple-300 whitespace-nowrap">
-                        {c.presentCount}/{c.totalOfficers}
+                      <span className="text-xs font-black text-purple-600 dark:text-purple-300 whitespace-nowrap bg-purple-500/20 px-2 py-0.5 rounded">
+                        {c.presentCount} Present
                       </span>
                     </div>
                   ))}
@@ -333,122 +449,126 @@ export default function PublicAttendanceBoard() {
           </div>
         )}
 
-        {/* Zone Officers Present (Highlighted) */}
+        {/* Zone Officers Highlight */}
         {hasZoneOfficers && (
-          <div className="bg-amber-500/10 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-5 shadow-xl space-y-3">
-            <div className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-amber-400" />
-              <h3 className="font-black text-sm text-amber-200 uppercase tracking-wider">
-                Zone Officials Present
-              </h3>
-            </div>
-            <div className="space-y-2">
+          <div className={clsx('rounded-2xl p-4 shadow-xl space-y-3 transition-colors', currentTheme.card)}>
+            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+              <Star className="w-4 h-4 text-amber-500" />
+              ഹാജരായ മേഖല ഭാരവാഹികൾ (Zone Leaders Present)
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {attendees
                 .filter(a => a.zonePositions.length > 0)
                 .map(a => (
                   <div key={a.attendanceId} className="flex items-center justify-between gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2.5">
-                    <div>
-                      <p className="font-bold text-white text-sm">{a.fullName}</p>
-                      <p className="text-[11px] text-amber-300">{a.zonePositions.join(' • ')}</p>
+                    <div className="min-w-0">
+                      <p className={clsx('font-bold text-xs truncate', currentTheme.textPrimary)}>{a.fullName}</p>
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400 truncate">{a.zonePositions.join(', ')}</p>
                     </div>
-                    <CheckCircle2 className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                    <span className={clsx('text-[10px] font-mono whitespace-nowrap', currentTheme.textMuted)}>
+                      {format(new Date(a.markedAt), 'hh:mm a')}
+                    </span>
                   </div>
-                ))
-              }
+                ))}
             </div>
           </div>
         )}
 
         {/* Full Attendance List */}
-        <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="flex items-center justify-between p-4 border-b border-white/10">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-emerald-400" />
-              <h3 className="font-black text-base text-white">
+        <div className={clsx('rounded-2xl overflow-hidden shadow-xl border transition-colors', currentTheme.card)}>
+          <div className={clsx('p-4 border-b flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3', currentTheme.cardSub)}>
+            <div>
+              <h3 className={clsx('font-black text-base', currentTheme.textPrimary)}>
                 ഹാജർ പട്ടിക ({totalAttendees})
               </h3>
+              <p className={clsx('text-xs mt-0.5', currentTheme.textMuted)}>
+                തത്സമയ ഹാജർ നില (Real-time live board)
+              </p>
             </div>
-            {program.status === 'active' && (
-              <span className="flex items-center gap-1.5 text-[11px] text-emerald-300 font-semibold">
-                <RefreshCw className="w-3 h-3 animate-spin" />
-                Live updating
-              </span>
-            )}
+
+            <input
+              type="text"
+              placeholder="പേര്, നമ്പർ, ശാഖ തിരയുക..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className={clsx('px-3 py-2 rounded-xl text-xs focus:outline-none transition border', currentTheme.input)}
+            />
           </div>
 
           {attendeesLoading ? (
-            <div className="flex items-center justify-center py-12 gap-2 text-emerald-300">
-              <RefreshCw className="w-5 h-5 animate-spin" />
-              <span className="text-sm font-medium">Loading...</span>
+            <div className="py-12 text-center text-slate-400">
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-emerald-500" />
+              <p className="text-xs">ഹാജർ വിവരങ്ങൾ ലോഡ് ചെയ്യുന്നു...</p>
             </div>
           ) : attendees.length === 0 ? (
             <div className="py-12 text-center space-y-2">
-              <Users className="w-10 h-10 text-slate-600 mx-auto" />
-              <p className="text-slate-400 font-medium text-sm">
+              <Users className="w-10 h-10 text-slate-400 mx-auto" />
+              <p className={clsx('font-medium text-sm', currentTheme.textMuted)}>
                 ഇതുവരെ ആരും ഹാജർ രേഖപ്പെടുത്തിയിട്ടില്ല
               </p>
-              <p className="text-xs text-slate-500">
+              <p className={clsx('text-xs', currentTheme.textMuted)}>
                 (കമ്മിറ്റി ഡെസ്കിൽ ഹാജർ രേഖപ്പെടുത്തുമ്പോൾ ഇവിടെ തത്സമയം കാണാം)
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-white/5">
-              {attendees.map((attendee, index) => (
+            <div className="divide-y divide-slate-200 dark:divide-white/5">
+              {filteredAttendees.map((attendee, index) => (
                 <div
                   key={attendee.attendanceId}
-                  className="px-4 py-3.5 flex items-start gap-3 hover:bg-white/5 transition"
+                  className={clsx('px-4 py-3.5 flex items-start gap-3 transition', currentTheme.attendeeRow)}
                 >
-                  {/* Index number */}
-                  <div className="w-7 h-7 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-[11px] font-black text-emerald-300 flex-shrink-0 mt-0.5">
+                  {/* Counter */}
+                  <span className={clsx('w-6 text-xs font-mono font-bold pt-0.5', currentTheme.textMuted)}>
                     {totalAttendees - index}
-                  </div>
+                  </span>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-bold text-white text-sm leading-tight truncate">
+                  {/* Member details */}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 truncate">
+                        <span className={clsx('font-bold text-sm truncate', currentTheme.textPrimary)}>
                           {attendee.fullName}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400 mt-0.5 font-mono">
-                          <span>📱 {attendee.mobile}</span>
-                          {attendee.membershipNumber && (
-                            <span>🆔 {attendee.membershipNumber}</span>
-                          )}
-                        </div>
+                        </span>
+                        <span className={clsx('text-xs font-mono', currentTheme.textMuted)}>📱 {attendee.mobile}</span>
+                        {attendee.membershipNumber && (
+                          <span className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-500/20 font-mono">
+                            🆔 {attendee.membershipNumber}
+                          </span>
+                        )}
                       </div>
-                      <span className="text-[10px] text-slate-500 whitespace-nowrap flex-shrink-0 mt-1">
+
+                      <span className={clsx('text-[11px] font-mono whitespace-nowrap', currentTheme.textMuted)}>
                         {format(new Date(attendee.markedAt), 'hh:mm a')}
                       </span>
                     </div>
 
-                    {/* Positions */}
+                    {/* Positions Badges */}
                     {(attendee.zonePositions.length > 0 || attendee.clusterPositions.length > 0 || attendee.unitPositions.length > 0) && (
-                      <div className="flex flex-wrap gap-1 mt-2">
+                      <div className="flex flex-wrap gap-1.5 pt-1">
                         {attendee.zonePositions.map((title, i) => (
                           <span
-                            key={`z-${i}`}
-                            className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold"
+                            key={i}
+                            className="text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md"
                           >
-                            <Award className="w-2.5 h-2.5" />
-                            {title} · Zone
+                            മേഖല: {title}
                           </span>
                         ))}
+
                         {attendee.clusterPositions.map((pos, i) => (
                           <span
-                            key={`c-${i}`}
-                            className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold"
+                            key={i}
+                            className="text-[10px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-md"
                           >
-                            <Star className="w-2.5 h-2.5" />
-                            {pos.title} · {pos.clusterName}
+                            ക്ലസ്റ്റർ: {pos.title} ({pos.clusterName})
                           </span>
                         ))}
+
                         {attendee.unitPositions.map((pos, i) => (
                           <span
-                            key={`u-${i}`}
-                            className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30 font-semibold"
+                            key={i}
+                            className="text-[10px] font-black uppercase tracking-wider bg-teal-500/20 text-teal-700 dark:text-teal-300 border border-teal-500/30 px-2 py-0.5 rounded-md"
                           >
-                            <Layers className="w-2.5 h-2.5" />
-                            {pos.title} · {pos.unitName}
+                            ശാഖ: {pos.title} ({pos.unitName})
                           </span>
                         ))}
                       </div>
@@ -461,12 +581,12 @@ export default function PublicAttendanceBoard() {
         </div>
 
         {/* Footer */}
-        <div className="text-center pb-4 space-y-1">
-          <p className="text-xs text-slate-500">
+        <div className="text-center pt-2 pb-6 space-y-1">
+          <p className={clsx('text-xs font-semibold', currentTheme.textMuted)}>
             SKSSF Chapparappadavu Zone — Attendance Board
           </p>
-          <Link to="/admin/login" className="text-xs text-slate-600 hover:text-slate-400 underline transition">
-            Admin Login →
+          <Link to="/admin/login" className={clsx('text-xs underline transition', currentTheme.textMuted)}>
+            Admin Panel Login →
           </Link>
         </div>
       </div>
