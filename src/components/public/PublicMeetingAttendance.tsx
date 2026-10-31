@@ -22,25 +22,6 @@ function WhatsAppIcon({ className = 'w-5 h-5' }: { className?: string }) {
   )
 }
 
-// Malayalam Translations for 16 Units
-const UNIT_MALAYALAM: Record<string, string> = {
-  'SHANTHIGIRI UNIT': 'ശാന്തിഗിരി',
-  'VILAKKANNOOR UNIT': 'വിളക്കന്നൂർ',
-  'PADAPPENGAD UNIT': 'പടപ്പേങ്ങാട്',
-  'NADUVIL UNIT': 'നടുവിൽ',
-  'ELAMBERAM PARA UNIT': 'എളമ്പേരംപാറ',
-  'CHAPPARAPPADAV UNIT': 'ചപ്പാരപ്പടവ്',
-  'KUTTAPARAMB UNIT': 'കുട്ടപ്പറമ്പ്',
-  'RAYAROM UNIT': 'രായരോം',
-  'THADIKKADAV UNIT': 'തടിക്കടവ്',
-  'NEDUVOODE UNIT': 'നെടുവോഡ്',
-  'MUNNAMKUNNU UNIT': 'മൂന്നാംകുന്ന്',
-  'KARUVANCHAL UNIT': 'കരുവഞ്ചാൽ',
-  'PERUVANA UNIT': 'പെരുവണ്ണ',
-  'ERUVATTI UNIT': 'എരുവാട്ടി',
-  'MANGARA BADARIYYA NAGAR UNIT': 'മാങ്ങര ബദരിയ്യ നഗർ',
-  'PERUMALABAD UNIT': 'പെരുമാളാബാദ്',
-}
 
 // Malayalam Translations for Clusters
 const CLUSTER_MALAYALAM: Record<string, string> = {
@@ -759,10 +740,7 @@ export default function PublicMeetingAttendance() {
     }
     if (unitSearch.trim()) {
       const q = unitSearch.trim().toLowerCase()
-      list = list.filter(u => {
-        const mlName = UNIT_MALAYALAM[u.name] || ''
-        return u.name.toLowerCase().includes(q) || mlName.toLowerCase().includes(q)
-      })
+      list = list.filter(u => u.name.toLowerCase().includes(q))
     }
     return list
   }, [directoryData.units, selectedClusterId, unitSearch])
@@ -1529,10 +1507,10 @@ export default function PublicMeetingAttendance() {
                           >
                             <div className="min-w-0 pr-2">
                               <span className="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">
-                                {activeUnit ? (UNIT_MALAYALAM[activeUnit.name] || 'യൂണിറ്റ്') : 'യൂണിറ്റ് തിരഞ്ഞെടുക്കുക'}
+                                {activeUnit ? 'SELECTED UNIT' : 'SELECT UNIT'}
                               </span>
                               <h3 className="text-base sm:text-lg font-black text-white truncate">
-                                {activeUnit ? activeUnit.name : 'ലിസ്റ്റിൽ നിന്നും തിരഞ്ഞെടുക്കുക'}
+                                {activeUnit ? activeUnit.name : 'Select Unit from List'}
                               </h3>
                               {activeUnit && (
                                 <p className="text-[11px] text-slate-400 mt-0.5">
@@ -1556,7 +1534,7 @@ export default function PublicMeetingAttendance() {
                                   type="text"
                                   value={unitSearch}
                                   onChange={e => setUnitSearch(e.target.value)}
-                                  placeholder="യൂണിറ്റ് സെർച്ച് ചെയ്യുക..."
+                                  placeholder="യൂണിറ്റ് സെർച്ച് ചെയ്യുക (Search unit)..."
                                   className="w-full pl-9 pr-3 py-2 bg-black/60 border border-white/10 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:border-emerald-400"
                                   autoFocus
                                 />
@@ -1596,14 +1574,11 @@ export default function PublicMeetingAttendance() {
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-1.5">
                                           <span className="text-xs font-black text-white truncate">
-                                            {UNIT_MALAYALAM[unit.name] || unit.name}
-                                          </span>
-                                          <span className="text-[10px] text-slate-400 truncate">
-                                            ({unit.name.replace(' UNIT', '')})
+                                            {unit.name}
                                           </span>
                                         </div>
                                         <span className="text-[10px] text-emerald-400 font-semibold block mt-0.5">
-                                          {clusterObj?.name?.replace(' CLUSTER', '') || 'ക്ലസ്റ്റർ'}
+                                          {clusterObj?.name || 'ക്ലസ്റ്റർ'}
                                         </span>
                                       </div>
 
@@ -1654,7 +1629,7 @@ export default function PublicMeetingAttendance() {
                                       : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'
                                   )}
                                 >
-                                  <span>{UNIT_MALAYALAM[u.name] || u.name.replace(' UNIT', '')}</span>
+                                  <span>{u.name.replace(' UNIT', '')}</span>
                                   {count.present > 0 && (
                                     <span className="text-[10px] font-mono bg-black/40 px-1.5 py-0.2 rounded-full text-emerald-300">
                                       {count.present}/4
@@ -1672,7 +1647,7 @@ export default function PublicMeetingAttendance() {
                             <div className="flex items-center justify-between pb-1 border-b border-white/10">
                               <span className="text-xs font-black text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
                                 <Users className="w-3.5 h-3.5" />
-                                <span>{UNIT_MALAYALAM[activeUnit.name] || activeUnit.name} യൂണിറ്റ് ഭാരവാഹികൾ (4 പേർ)</span>
+                                <span>{activeUnit.name} - ഭാരവാഹികൾ (4 പേർ)</span>
                               </span>
                               <span className="text-xs font-bold text-slate-300 bg-white/10 px-2 py-0.5 rounded-md">
                                 {getUnitAttendanceCount(activeUnit.id).present} / 4 ഹാജരായി
@@ -1733,7 +1708,7 @@ export default function PublicMeetingAttendance() {
                                               full_name: lMember.full_name,
                                               mobile: lMember.mobile,
                                               membership_number: lMember.membership_number,
-                                              positionTitle: `${posCfg.ml} - ${UNIT_MALAYALAM[activeUnit.name] || activeUnit.name}`,
+                                              positionTitle: `${posCfg.ml} - ${activeUnit.name}`,
                                             })}
                                             title="WhatsApp നന്ദി സന്ദേശം അയക്കുക"
                                             className="p-2 rounded-xl bg-[#25D366]/20 hover:bg-[#25D366]/30 text-[#25D366] border border-[#25D366]/30 transition"
@@ -1749,7 +1724,7 @@ export default function PublicMeetingAttendance() {
                                               full_name: lMember.full_name,
                                               mobile: lMember.mobile,
                                               membership_number: lMember.membership_number,
-                                              positionTitle: `${posCfg.ml} - ${UNIT_MALAYALAM[activeUnit.name] || activeUnit.name}`,
+                                              positionTitle: `${posCfg.ml} - ${activeUnit.name}`,
                                             }
                                           })}
                                           disabled={confirmMutation.isPending}
