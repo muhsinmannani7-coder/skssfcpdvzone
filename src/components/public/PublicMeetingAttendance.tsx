@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { format } from 'date-fns'
+import { STATIC_DIRECTORY } from '@/data/staticDirectory'
 
 // Official WhatsApp Logo Component
 function WhatsAppIcon({ className = 'w-5 h-5' }: { className?: string }) {
@@ -323,7 +324,11 @@ export default function PublicMeetingAttendance() {
   }, [activeProgramId, getQueueKey])
 
   // 3. Pre-cache Entire Hierarchy Directory (Clusters, Units, Members) for 0ms Instant Response
-  const { data: directoryData = { clusters: [], units: [], members: [] } } = useQuery<{
+  const { data: directoryData = STATIC_DIRECTORY as unknown as {
+    clusters: RawCluster[]
+    units: RawUnit[]
+    members: RawMember[]
+  } } = useQuery<{
     clusters: RawCluster[]
     units: RawUnit[]
     members: RawMember[]
@@ -346,9 +351,9 @@ export default function PublicMeetingAttendance() {
       ])
 
       const result = {
-        clusters: (clustersRes.data || []) as RawCluster[],
-        units: (unitsRes.data || []) as RawUnit[],
-        members: (membersRes.data || []) as unknown as RawMember[],
+        clusters: (clustersRes.data && clustersRes.data.length > 0 ? clustersRes.data : STATIC_DIRECTORY.clusters) as RawCluster[],
+        units: (unitsRes.data && unitsRes.data.length > 0 ? unitsRes.data : STATIC_DIRECTORY.units) as RawUnit[],
+        members: (membersRes.data && membersRes.data.length > 0 ? membersRes.data : STATIC_DIRECTORY.members) as unknown as RawMember[],
       }
 
       try {
@@ -362,12 +367,23 @@ export default function PublicMeetingAttendance() {
     initialData: () => {
       try {
         const saved = localStorage.getItem('skssf_full_directory_cache')
-        return saved ? JSON.parse(saved) : { clusters: [], units: [], members: [] }
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (parsed?.units?.length > 0 && parsed?.members?.length > 0) {
+            return parsed
+          }
+        }
       } catch {
-        return { clusters: [], units: [], members: [] }
+        // ignore storage error
+      }
+      return STATIC_DIRECTORY as unknown as {
+        clusters: RawCluster[]
+        units: RawUnit[]
+        members: RawMember[]
       }
     },
-    staleTime: 1000 * 60 * 30, // 30 minutes cache
+    staleTime: 1000 * 60 * 5, // 5 minutes fresh
+    refetchOnMount: true,
   })
 
   // Auto-select first unit when directory loads
