@@ -84,7 +84,7 @@ export default function UnitPointsReport() {
         .eq('is_active', true)
         .order('sort_order')
       if (error) throw error
-      return data as RawUnit[]
+      return (data ?? []) as unknown as RawUnit[]
     },
   })
 
@@ -97,7 +97,7 @@ export default function UnitPointsReport() {
         .eq('is_active', true)
         .not('unit_id', 'is', null)
       if (error) throw error
-      return data as RawMemberPosition[]
+      return (data ?? []) as unknown as RawMemberPosition[]
     },
   })
 
@@ -171,7 +171,7 @@ export default function UnitPointsReport() {
 
   // Compute unit rows
   const unitRows = useMemo<UnitRow[]>(() => {
-    return units.map(u => {
+    const rawRows = units.map(u => {
       const cl = u.clusters
       const unitMembers = unitMembersMap.get(u.id) ?? new Set<string>()
       const uniqueMembers = Array.from(unitMembers) // de-duped by the Set itself
