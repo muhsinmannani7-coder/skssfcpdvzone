@@ -146,8 +146,17 @@ export default function AttendanceReports() {
 
     // Sort by points descending, then by presentCount
     results.sort((a, b) => b.points - a.points || b.presentCount - a.presentCount)
+    let currentRank = 1
+    let prevPoints: number | null = null
     results.forEach((r, idx) => {
-      r.rank = idx + 1
+      if (idx === 0) {
+        currentRank = 1
+        prevPoints = r.points
+      } else if (r.points !== prevPoints) {
+        currentRank++
+        prevPoints = r.points
+      }
+      r.rank = currentRank
     })
 
     return results

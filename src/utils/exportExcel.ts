@@ -102,6 +102,7 @@ export function exportCommitteePointsToExcel(
 // ─── Unit Points Report Export ────────────────────────────────────────────────
 
 export interface UnitReportExportData {
+  rank: number
   unitName: string
   clusterName: string
   meetings: Array<{ name: string; date: string; pointsEarned: number; maxPoints: number }>
@@ -116,6 +117,7 @@ export function exportUnitReportToExcel(records: UnitReportExportData[]): void {
 
   // ── Sheet 1: Summary ──────────────────────────────────────────────────────
   const summaryRows = records.map(r => ({
+    'Rank': r.rank,
     'Unit Name': r.unitName,
     'Cluster': r.clusterName,
     'Total Meetings': r.meetings.length,
@@ -127,6 +129,7 @@ export function exportUnitReportToExcel(records: UnitReportExportData[]): void {
 
   const ws1 = XLSX.utils.json_to_sheet(summaryRows)
   ws1['!cols'] = [
+    { wch: 8 },
     { wch: 30 },
     { wch: 20 },
     { wch: 16 },
@@ -148,6 +151,7 @@ export function exportUnitReportToExcel(records: UnitReportExportData[]): void {
 
   const detailRows = records.map(r => {
     const row: Record<string, string | number> = {
+      'Rank': r.rank,
       'Unit Name': r.unitName,
       'Cluster': r.clusterName,
     }

@@ -43,6 +43,7 @@ interface MeetingCell {
 }
 
 interface UnitRow {
+  rank: number
   unitId: string
   unitName: string
   clusterName: string
@@ -213,7 +214,23 @@ export default function UnitPointsReport() {
         maxTotalPoints,
         attendancePercent,
       }
-    }).sort((a, b) => b.totalPoints - a.totalPoints)
+    }).sort((a, b) => b.totalPoints - a.totalPoints || b.attendancePercent - a.attendancePercent)
+
+    let currentRank = 1
+    let prevPoints: number | null = null
+    return rawRows.map((row, idx) => {
+      if (idx === 0) {
+        currentRank = 1
+        prevPoints = row.totalPoints
+      } else if (row.totalPoints !== prevPoints) {
+        currentRank++
+        prevPoints = row.totalPoints
+      }
+      return {
+        ...row,
+        rank: currentRank,
+      }
+    })
   }, [units, filteredPrograms, unitMembersMap, unitMemberNamesMap, attendanceSet])
 
   // Apply cluster filter
@@ -234,6 +251,7 @@ export default function UnitPointsReport() {
   // ── Export ─────────────────────────────────────────────────────────────────
   const handleExport = () => {
     const exportData: UnitReportExportData[] = displayedRows.map(row => ({
+      rank: row.rank,
       unitName: row.unitName,
       clusterName: row.clusterName,
       meetings: filteredPrograms.map(prog => ({
@@ -415,11 +433,28 @@ export default function UnitPointsReport() {
                           isExpanded ? 'bg-primary-50' : 'bg-white'
                         )}>
                           <div className="flex items-center gap-1.5">
+                            {row.totalPoints > 0 && row.rank === 1 ? (
+                              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-400 text-slate-900 font-black text-[10px] flex-shrink-0" title="Rank 1 (ഫസ്റ്റ്)">
+                                🥇
+                              </span>
+                            ) : row.totalPoints > 0 && row.rank === 2 ? (
+                              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-300 text-slate-900 font-black text-[10px] flex-shrink-0" title="Rank 2 (സെക്കൻഡ്)">
+                                🥈
+                              </span>
+                            ) : row.totalPoints > 0 && row.rank === 3 ? (
+                              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-600 text-white font-black text-[10px] flex-shrink-0" title="Rank 3 (തേർഡ്)">
+                                🥉
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-surface-400 w-5 text-center flex-shrink-0">
+                                #{row.rank}
+                              </span>
+                            )}
                             {isExpanded
                               ? <ChevronUp className="w-3.5 h-3.5 text-primary-500 flex-shrink-0" />
                               : <ChevronDown className="w-3.5 h-3.5 text-surface-400 flex-shrink-0" />
                             }
-                            {row.unitName}
+                            <span>{row.unitName}</span>
                           </div>
                         </td>
                         <td className="px-3 py-3 text-surface-500 whitespace-nowrap">

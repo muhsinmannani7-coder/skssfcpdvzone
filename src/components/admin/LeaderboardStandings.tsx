@@ -7,6 +7,7 @@ import {
 import { clsx } from 'clsx'
 
 interface UnitStanding {
+  rank: number
   unitId: string
   unitName: string
   clusterName: string
@@ -17,7 +18,16 @@ interface UnitStanding {
   attendanceRate: number
 }
 
+interface ClusterStanding {
+  rank: number
+  code: string
+  name: string
+  points: number
+  unitsCount: number
+}
+
 interface MemberStanding {
+  rank: number
   memberId: string
   fullName: string
   mobile: string
@@ -134,8 +144,8 @@ export default function LeaderboardStandings() {
         }
       }
 
-      // Build Unit Standings
-      const unitStandings: UnitStanding[] = (units || []).map(u => {
+      // Build Unit Standings with Dense Ranking (Equal points get identical rank)
+      const sortedUnits = (units || []).map(u => {
         const cl = u.clusters as unknown as { name: string; code: string } | null
         const totalPts = unitPointsMap.get(u.id) || 0
         const maxPossible = 4 * meetingsCount // 4 officers per unit
@@ -153,7 +163,23 @@ export default function LeaderboardStandings() {
         }
       }).sort((a, b) => b.totalPoints - a.totalPoints || b.attendanceRate - a.attendanceRate)
 
-      // Build Cluster Standings
+      let currentUnitRank = 1
+      let prevUnitPts: number | null = null
+      const unitStandings: UnitStanding[] = sortedUnits.map((u, i) => {
+        if (i === 0) {
+          currentUnitRank = 1
+          prevUnitPts = u.totalPoints
+        } else if (u.totalPoints !== prevUnitPts) {
+          currentUnitRank++
+          prevUnitPts = u.totalPoints
+        }
+        return {
+          ...u,
+          rank: currentUnitRank,
+        }
+      })
+
+      // Build Cluster Standings with Dense Ranking (Equal points get identical rank)
       const clusterMap = new Map<string, { code: string; name: string; points: number; unitsCount: number }>()
       for (const u of unitStandings) {
         if (!clusterMap.has(u.clusterCode)) {
@@ -168,10 +194,25 @@ export default function LeaderboardStandings() {
         c.points += u.totalPoints
         c.unitsCount += 1
       }
-      const clusterStandings = Array.from(clusterMap.values()).sort((a, b) => b.points - a.points)
+      const sortedClusters = Array.from(clusterMap.values()).sort((a, b) => b.points - a.points)
+      let currentClusterRank = 1
+      let prevClusterPts: number | null = null
+      const clusterStandings: ClusterStanding[] = sortedClusters.map((c, i) => {
+        if (i === 0) {
+          currentClusterRank = 1
+          prevClusterPts = c.points
+        } else if (c.points !== prevClusterPts) {
+          currentClusterRank++
+          prevClusterPts = c.points
+        }
+        return {
+          ...c,
+          rank: currentClusterRank,
+        }
+      })
 
-      // Build Member Standings
-      const memberStandings: MemberStanding[] = Array.from(memberMetaMap.values()).map(meta => {
+      // Build Member Standings with Dense Ranking (Equal points get identical rank)
+      const sortedMembers = Array.from(memberMetaMap.values()).map(meta => {
         const pts = memberPointsMap.get(meta.id) || 0
         const rate = meetingsCount > 0 ? Math.round((pts / meetingsCount) * 100) : 0
         return {
@@ -186,8 +227,39 @@ export default function LeaderboardStandings() {
         }
       }).sort((a, b) => b.totalPoints - a.totalPoints)
 
-      // Zone Members Only
-      const zoneStandings = memberStandings.filter(m => m.committeeLevel === 'zone')
+      let currentMemberRank = 1
+      let prevMemberPts: number | null = null
+      const memberStandings: MemberStanding[] = sortedMembers.map((m, i) => {
+        if (i === 0) {
+          currentMemberRank = 1
+          prevMemberPts = m.totalPoints
+        } else if (m.totalPoints !== prevMemberPts) {
+          currentMemberRank++
+          prevMemberPts = m.totalPoints
+        }
+        return {
+          ...m,
+          rank: currentMemberRank,
+        }
+      })
+
+      // Zone Members Only with Dense Ranking
+      const sortedZone = memberStandings.filter(m => m.committeeLevel === 'zone')
+      let currentZoneRank = 1
+      let prevZonePts: number | null = null
+      const zoneStandings: MemberStanding[] = sortedZone.map((m, i) => {
+        if (i === 0) {
+          currentZoneRank = 1
+          prevZonePts = m.totalPoints
+        } else if (m.totalPoints !== prevZonePts) {
+          currentZoneRank++
+          prevZonePts = m.totalPoints
+        }
+        return {
+          ...m,
+          rank: currentZoneRank,
+        }
+      })
 
       return {
         unitStandings,
@@ -209,18 +281,18 @@ export default function LeaderboardStandings() {
 
     let text = `*SKSSF CHAPPARAPPADAVU ZONE*\n🏆 *ATTENDANCE LEADERBOARD*\n📊 *${progTitle}*\n\n`
     text += `*TOP UNITS (16 Units):*\n`
-    leaderboardData.unitStandings.slice(0, 5).forEach((u, i) => {
-      text += `${i + 1}. *${u.unitName}* (${u.clusterCode}) - ${u.totalPoints} Pts (${u.attendanceRate}%)\n`
+    leaderboardData.unitStandings.slice(0, 8).forEach((u) => {
+      text += `*Rank ${u.rank}.* *${u.unitName}* (${u.clusterCode}) - ${u.totalPoints} Pts (${u.attendanceRate}%)\n`
     })
 
     text += `\n*CLUSTERS:*\n`
-    leaderboardData.clusterStandings.forEach((c, i) => {
-      text += `${i + 1}. *${c.name}*: ${c.points} Pts\n`
+    leaderboardData.clusterStandings.forEach((c) => {
+      text += `*Rank ${c.rank}.* *${c.name}*: ${c.points} Pts\n`
     })
 
     text += `\n*TOP ATTENDEES:*\n`
-    leaderboardData.memberStandings.slice(0, 5).forEach((m, i) => {
-      text += `${i + 1}. ${m.fullName} - ${m.totalPoints} Pts\n`
+    leaderboardData.memberStandings.slice(0, 8).forEach((m) => {
+      text += `*Rank ${m.rank}.* ${m.fullName} - ${m.totalPoints} Pts\n`
     })
 
     text += `\n🔗 Live Portal: https://skssf-cpdv-zone.netlify.app`
@@ -364,23 +436,30 @@ export default function LeaderboardStandings() {
                     </tr>
                   </thead>
                   <tbody>
-                    {leaderboardData.unitStandings.map((unit, idx) => (
-                      <tr key={unit.unitId} className={idx < 3 ? 'bg-amber-50/40' : undefined}>
+                    {leaderboardData.unitStandings.map((unit) => (
+                      <tr
+                        key={unit.unitId}
+                        className={clsx(
+                          unit.totalPoints > 0 && unit.rank === 1 && 'bg-amber-50/70 font-medium',
+                          unit.totalPoints > 0 && unit.rank === 2 && 'bg-slate-50/70',
+                          unit.totalPoints > 0 && unit.rank === 3 && 'bg-orange-50/40'
+                        )}
+                      >
                         <td className="text-center font-bold">
-                          {idx === 0 ? (
-                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-400 text-slate-900 font-black text-xs shadow-sm">
+                          {unit.totalPoints > 0 && unit.rank === 1 ? (
+                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-400 text-slate-900 font-black text-xs shadow-sm" title="Rank 1">
                               🥇 1
                             </span>
-                          ) : idx === 1 ? (
-                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-300 text-slate-900 font-black text-xs shadow-sm">
+                          ) : unit.totalPoints > 0 && unit.rank === 2 ? (
+                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-300 text-slate-900 font-black text-xs shadow-sm" title="Rank 2">
                               🥈 2
                             </span>
-                          ) : idx === 2 ? (
-                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-600 text-white font-black text-xs shadow-sm">
+                          ) : unit.totalPoints > 0 && unit.rank === 3 ? (
+                            <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-600 text-white font-black text-xs shadow-sm" title="Rank 3">
                               🥉 3
                             </span>
                           ) : (
-                            <span className="text-surface-400 text-sm">#{idx + 1}</span>
+                            <span className="text-surface-400 text-sm">#{unit.rank}</span>
                           )}
                         </td>
                         <td>
@@ -440,21 +519,29 @@ export default function LeaderboardStandings() {
           {/* TAB 2: CLUSTER STANDINGS */}
           {activeTab === 'clusters' && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              {leaderboardData.clusterStandings.map((c, idx) => (
+              {leaderboardData.clusterStandings.map((c) => (
                 <div
                   key={c.code}
                   className={clsx(
                     'card p-6 border-2 relative overflow-hidden transition-all',
-                    idx === 0
+                    c.rank === 1 && c.points > 0
                       ? 'border-amber-400 bg-gradient-to-b from-amber-50/50 to-white shadow-md'
+                      : c.rank === 2 && c.points > 0
+                      ? 'border-slate-300 bg-gradient-to-b from-slate-50/50 to-white shadow-xs'
                       : 'border-surface-200'
                   )}
                 >
-                  {idx === 0 && (
-                    <div className="absolute top-3 right-3 text-2xl">🏆</div>
+                  {c.rank === 1 && c.points > 0 && (
+                    <div className="absolute top-3 right-3 text-2xl" title="First Place (ഫസ്റ്റ്)">🏆</div>
+                  )}
+                  {c.rank === 2 && c.points > 0 && (
+                    <div className="absolute top-3 right-3 text-2xl" title="Second Place (സെക്കൻഡ്)">🥈</div>
+                  )}
+                  {c.rank === 3 && c.points > 0 && (
+                    <div className="absolute top-3 right-3 text-2xl" title="Third Place (തേർഡ്)">🥉</div>
                   )}
                   <p className="text-xs font-bold text-surface-400 uppercase tracking-wider">
-                    Rank #{idx + 1}
+                    Rank #{c.rank}
                   </p>
                   <h3 className="text-lg font-black text-surface-900 mt-1">{c.name}</h3>
                   <p className="text-xs text-surface-500">{c.unitsCount} Units</p>
@@ -480,7 +567,7 @@ export default function LeaderboardStandings() {
                     Individual Member Attendance Ranking (92 Members)
                   </h3>
                   <p className="text-xs text-surface-500">
-                    Ranked by total attendance points across meetings
+                    Ranked by total attendance points across meetings (Equal points share same rank)
                   </p>
                 </div>
                 <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-800">
@@ -501,10 +588,24 @@ export default function LeaderboardStandings() {
                     </tr>
                   </thead>
                   <tbody>
-                    {leaderboardData.memberStandings.map((m, idx) => (
+                    {leaderboardData.memberStandings.map((m) => (
                       <tr key={m.memberId}>
-                        <td className="text-center font-bold text-surface-400 text-sm">
-                          #{idx + 1}
+                        <td className="text-center font-bold text-sm">
+                          {m.totalPoints > 0 && m.rank === 1 ? (
+                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 font-black text-xs shadow-xs">
+                              🥇 1
+                            </span>
+                          ) : m.totalPoints > 0 && m.rank === 2 ? (
+                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-slate-200 text-slate-800 font-bold text-xs">
+                              🥈 2
+                            </span>
+                          ) : m.totalPoints > 0 && m.rank === 3 ? (
+                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-amber-700 text-white font-bold text-xs">
+                              🥉 3
+                            </span>
+                          ) : (
+                            <span className="text-surface-400">#{m.rank}</span>
+                          )}
                         </td>
                         <td>
                           <p className="font-bold text-surface-900 text-sm">{m.fullName}</p>
@@ -561,7 +662,7 @@ export default function LeaderboardStandings() {
                     Zone Committee Leaders Presence (28 Members)
                   </h3>
                   <p className="text-xs text-surface-500">
-                    Attendance records of Chapparappadavu Zone Office Bearers & Secretariat Members
+                    Attendance records of Chapparappadavu Zone Office Bearers & Secretariat Members (Equal points share same rank)
                   </p>
                 </div>
                 <span className="badge badge-yellow font-bold text-xs">
@@ -573,7 +674,7 @@ export default function LeaderboardStandings() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th className="w-12 text-center">#</th>
+                      <th className="w-12 text-center">Rank</th>
                       <th>Leader Name</th>
                       <th>Zone Position</th>
                       <th>Mobile</th>
@@ -582,10 +683,24 @@ export default function LeaderboardStandings() {
                     </tr>
                   </thead>
                   <tbody>
-                    {leaderboardData.zoneStandings.map((m, idx) => (
+                    {leaderboardData.zoneStandings.map((m) => (
                       <tr key={m.memberId}>
-                        <td className="text-center font-bold text-surface-400 text-sm">
-                          {idx + 1}
+                        <td className="text-center font-bold text-sm">
+                          {m.totalPoints > 0 && m.rank === 1 ? (
+                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-amber-400 text-slate-900 font-black text-xs shadow-xs">
+                              🥇 1
+                            </span>
+                          ) : m.totalPoints > 0 && m.rank === 2 ? (
+                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-slate-200 text-slate-800 font-bold text-xs">
+                              🥈 2
+                            </span>
+                          ) : m.totalPoints > 0 && m.rank === 3 ? (
+                            <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-amber-700 text-white font-bold text-xs">
+                              🥉 3
+                            </span>
+                          ) : (
+                            <span className="text-surface-400">#{m.rank}</span>
+                          )}
                         </td>
                         <td>
                           <p className="font-bold text-surface-900 text-sm">{m.fullName}</p>

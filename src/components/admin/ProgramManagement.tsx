@@ -142,17 +142,23 @@ export default function ProgramManagement() {
     onError: (e: Error) => toast.error('Failed to re-open meeting', e.message),
   })
 
-  // Delete Program mutation
+  // Delete Program mutation (Safe RPC + Fallback)
   const deleteProgram = useMutation({
     mutationFn: async (id: string) => {
-      // First delete all attendance records for this program
+      // 1. Try safe RPC if available
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('delete_program', { p_program_id: id })
+      if (!rpcErr && rpcData?.success) return
+
+      // 2. Direct client fallback: delete attendance records first
       const { error: attErr } = await supabase
         .from('attendance')
         .delete()
         .eq('program_id', id)
-      if (attErr) throw attErr
+      if (attErr) {
+        console.warn('Direct attendance delete note:', attErr)
+      }
 
-      // Then delete the program itself
+      // 3. Delete the program
       const { error } = await supabase
         .from('programs')
         .delete()
@@ -240,10 +246,20 @@ export default function ProgramManagement() {
               {/* Close Button */}
               <button
                 onClick={() => setConfirmAction({ type: 'close', program: activeProgram })}
-                className="btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 px-3 rounded-xl transition flex items-center gap-1.5"
+                className="btn bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 px-3 rounded-xl transition flex items-center gap-1.5 shadow-sm"
               >
                 <Square className="w-3.5 h-3.5" />
                 <span>Close / Pause</span>
+              </button>
+
+              {/* Delete Button */}
+              <button
+                onClick={() => setConfirmAction({ type: 'delete', program: activeProgram })}
+                className="btn bg-rose-950/80 hover:bg-rose-900 text-rose-200 hover:text-white text-xs font-bold py-2 px-3 rounded-xl transition flex items-center gap-1.5 border border-rose-400/40 shadow-sm"
+                title="Delete this meeting permanently"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-300" />
+                <span>ഡിലീറ്റ് (Delete)</span>
               </button>
             </div>
           </div>
@@ -558,16 +574,15 @@ function ProgramCard({
             </button>
           )}
 
-          {/* Delete button – shown for non-active meetings */}
-          {program.status !== 'active' && (
-            <button
-              onClick={onDelete}
-              className="btn btn-sm font-bold text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200"
-              title="Delete this meeting permanently"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
+          {/* Delete button – available on all cards */}
+          <button
+            onClick={onDelete}
+            className="btn btn-sm font-bold text-red-600 hover:text-white hover:bg-red-600 bg-red-50 border border-red-300 flex items-center gap-1.5 shadow-xs transition"
+            title="Delete this meeting permanently"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>DELETE (ഡിലീറ്റ്)</span>
+          </button>
         </div>
       </div>
     </div>

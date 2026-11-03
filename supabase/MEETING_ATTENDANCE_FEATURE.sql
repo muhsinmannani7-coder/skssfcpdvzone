@@ -51,6 +51,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- 4. Function to Permanently Delete a program and all its attendance
+CREATE OR REPLACE FUNCTION public.delete_program(p_program_id UUID)
+RETURNS JSONB AS $$
+BEGIN
+  -- First delete attendance records for this program
+  DELETE FROM public.attendance WHERE program_id = p_program_id;
+
+  -- Then delete the program
+  DELETE FROM public.programs WHERE id = p_program_id;
+
+  RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- 2. Public / Kiosk Attendance Function (Safe, fast, Security Definer)
 CREATE OR REPLACE FUNCTION public.public_record_attendance(
   p_program_id UUID,
