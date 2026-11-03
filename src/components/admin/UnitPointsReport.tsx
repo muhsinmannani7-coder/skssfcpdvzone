@@ -3,10 +3,11 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import {
   BarChart3, Download, ChevronDown, ChevronUp,
-  CheckCircle2, XCircle, Minus,
+  CheckCircle2, XCircle, Minus, FileText,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { exportUnitReportToExcel, type UnitReportExportData } from '@/utils/exportExcel'
+import { exportUnitReportToPdf } from '@/utils/exportPdf'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -271,6 +272,32 @@ export default function UnitPointsReport() {
     exportUnitReportToExcel(exportData)
   }
 
+  const handleExportPdf = () => {
+    const exportData: UnitReportExportData[] = displayedRows.map(row => ({
+      rank: row.rank,
+      unitName: row.unitName,
+      clusterName: row.clusterName,
+      meetings: filteredPrograms.map(prog => ({
+        name: prog.name,
+        date: prog.program_date,
+        pointsEarned: row.meetings[prog.id]?.pointsEarned ?? 0,
+        maxPoints: row.meetings[prog.id]?.maxPoints ?? 0,
+      })),
+      totalPoints: row.totalPoints,
+      maxTotalPoints: row.maxTotalPoints,
+      attendancePercent: row.attendancePercent,
+      absentMembersPerMeeting: filteredPrograms.map(prog => ({
+        meetingName: prog.name,
+        absentMembers: row.meetings[prog.id]?.absentMembers ?? [],
+      })),
+    }))
+
+    const clusterObj = clusters.find(c => c.id === selectedClusterId)
+    const clusterLabel = selectedClusterId === 'all' ? undefined : (clusterObj?.name || clusterObj?.code)
+
+    exportUnitReportToPdf(exportData, summaryStats, clusterLabel)
+  }
+
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 page-transition">
@@ -286,7 +313,7 @@ export default function UnitPointsReport() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Status filter */}
           <select
             value={includedStatus}
@@ -297,14 +324,26 @@ export default function UnitPointsReport() {
             <option value="all">All Meetings</option>
           </select>
 
-          {/* Export */}
+          {/* Export Excel */}
           <button
             onClick={handleExport}
             disabled={isLoading || displayedRows.length === 0}
-            className="btn btn-primary text-xs font-bold py-2.5 px-3.5 flex items-center gap-1.5 shadow-sm"
+            className="btn btn-primary text-xs font-bold py-2.5 px-3 flex items-center gap-1.5 shadow-sm"
+            title="Download Excel Report"
           >
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Export Excel</span>
+            <span>Export Excel</span>
+          </button>
+
+          {/* Export PDF */}
+          <button
+            onClick={handleExportPdf}
+            disabled={isLoading || displayedRows.length === 0}
+            className="btn bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2.5 px-3 flex items-center gap-1.5 shadow-sm transition active:scale-95"
+            title="Download Official PDF Scorecard"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Export PDF</span>
           </button>
         </div>
       </div>
