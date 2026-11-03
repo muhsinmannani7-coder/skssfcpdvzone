@@ -101,6 +101,8 @@ export default function LeaderboardStandings() {
       }
       const memberMetaMap = new Map<string, MemberMeta>()
 
+      const memberUnitCreditedSet = new Set<string>() // track member+unit combos already credited
+
       for (const mp of memberPositions || []) {
         const m = mp.members as unknown as { id: string; full_name: string; mobile: string; membership_number?: string | null } | null
         const pos = mp.positions as unknown as { title: string } | null
@@ -119,11 +121,15 @@ export default function LeaderboardStandings() {
             })
           }
 
-          // If member attended, attribute point to their unit
+          // Credit unit ONLY ONCE per member (not once per position)
           const pts = memberPointsMap.get(m.id) || 0
           if (mp.unit_id && pts > 0) {
-            const currentUnitPts = unitPointsMap.get(mp.unit_id) || 0
-            unitPointsMap.set(mp.unit_id, currentUnitPts + pts)
+            const creditKey = `${m.id}::${mp.unit_id}`
+            if (!memberUnitCreditedSet.has(creditKey)) {
+              memberUnitCreditedSet.add(creditKey)
+              const currentUnitPts = unitPointsMap.get(mp.unit_id) || 0
+              unitPointsMap.set(mp.unit_id, currentUnitPts + pts)
+            }
           }
         }
       }

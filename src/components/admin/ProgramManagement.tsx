@@ -5,7 +5,7 @@ import { useToast } from '@/components/shared/Toaster'
 import {
   Plus, Play, Square, CalendarCheck, MapPin, Clock, X, Save,
   Loader2, AlertTriangle, Share2, Copy, ExternalLink, Monitor,
-  RotateCcw, Sparkles, Check, LayoutList, Lock
+  RotateCcw, Sparkles, Check, LayoutList, Lock, Trash2
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { format } from 'date-fns'
@@ -19,7 +19,7 @@ export default function ProgramManagement() {
   const [activeMonitorProgram, setActiveMonitorProgram] = useState<Program | null>(null)
   const [shareModalProgram, setShareModalProgram] = useState<Program | null>(null)
   const [confirmAction, setConfirmAction] = useState<{
-    type: 'start' | 'close' | 'reopen'
+    type: 'start' | 'close' | 'reopen' | 'delete'
     program: Program
   } | null>(null)
 
@@ -140,6 +140,32 @@ export default function ProgramManagement() {
       setShareModalProgram(updatedProg)
     },
     onError: (e: Error) => toast.error('Failed to re-open meeting', e.message),
+  })
+
+  // Delete Program mutation
+  const deleteProgram = useMutation({
+    mutationFn: async (id: string) => {
+      // First delete all attendance records for this program
+      const { error: attErr } = await supabase
+        .from('attendance')
+        .delete()
+        .eq('program_id', id)
+      if (attErr) throw attErr
+
+      // Then delete the program itself
+      const { error } = await supabase
+        .from('programs')
+        .delete()
+        .eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      toast.success('Meeting deleted successfully.')
+      qc.invalidateQueries({ queryKey: ['programs'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      setConfirmAction(null)
+    },
+    onError: (e: Error) => toast.error('Failed to delete meeting', e.message),
   })
 
   const handleCopyLink = (p: Program) => {
@@ -301,6 +327,7 @@ export default function ProgramManagement() {
               onStart={() => setConfirmAction({ type: 'start', program: p })}
               onClose={() => setConfirmAction({ type: 'close', program: p })}
               onReopen={() => setConfirmAction({ type: 'reopen', program: p })}
+              onDelete={() => setConfirmAction({ type: 'delete', program: p })}
               onCopyLink={() => handleCopyLink(p)}
               onShareWhatsApp={() => setShareModalProgram(p)}
               onOpenMonitor={() => setActiveMonitorProgram(p)}
@@ -341,9 +368,10 @@ export default function ProgramManagement() {
             if (confirmAction.type === 'start') startProgram.mutate(confirmAction.program)
             else if (confirmAction.type === 'close') closeProgram.mutate(confirmAction.program.id)
             else if (confirmAction.type === 'reopen') reopenProgram.mutate(confirmAction.program)
+            else if (confirmAction.type === 'delete') deleteProgram.mutate(confirmAction.program.id)
           }}
           onCancel={() => setConfirmAction(null)}
-          loading={startProgram.isPending || closeProgram.isPending || reopenProgram.isPending}
+          loading={startProgram.isPending || closeProgram.isPending || reopenProgram.isPending || deleteProgram.isPending}
         />
       )}
     </div>
@@ -355,6 +383,7 @@ function ProgramCard({
   onStart,
   onClose,
   onReopen,
+  onDelete,
   onCopyLink,
   onShareWhatsApp,
   onOpenMonitor,
@@ -365,6 +394,7 @@ function ProgramCard({
   onStart: () => void
   onClose: () => void
   onReopen: () => void
+  onDelete: () => void
   onCopyLink: () => void
   onShareWhatsApp: () => void
   onOpenMonitor: () => void
@@ -525,6 +555,17 @@ function ProgramCard({
               title="Re-open this meeting for attendance"
             >
               <RotateCcw className="w-3.5 h-3.5" /> RE-OPEN
+            </button>
+          )}
+
+          {/* Delete button – shown for non-active meetings */}
+          {program.status !== 'active' && (
+            <button
+              onClick={onDelete}
+              className="btn btn-sm font-bold text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200"
+              title="Delete this meeting permanently"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
@@ -853,7 +894,7 @@ function MeetingShareModal({
 }
 
 function ConfirmDialog({ type, programName, onConfirm, onCancel, loading }: {
-  type: 'start' | 'close' | 'reopen'
+  type: 'start' | 'close' | 'reopen' | 'delete'
   programName: string
   onConfirm: () => void
   onCancel: () => void
@@ -866,16 +907,19 @@ function ConfirmDialog({ type, programName, onConfirm, onCancel, loading }: {
           'w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4',
           type === 'start' ? 'bg-emerald-100 text-emerald-600' :
           type === 'reopen' ? 'bg-blue-100 text-blue-600' :
+          type === 'delete' ? 'bg-red-100 text-red-600' :
           'bg-red-100 text-red-600'
         )}>
           {type === 'start' ? <Play className="w-6 h-6" /> :
            type === 'reopen' ? <RotateCcw className="w-6 h-6" /> :
+           type === 'delete' ? <Trash2 className="w-6 h-6" /> :
            <AlertTriangle className="w-6 h-6" />}
         </div>
 
         <h3 className="text-lg font-bold text-surface-900 text-center">
           {type === 'start' ? 'Start Meeting Attendance?' :
            type === 'reopen' ? 'Re-open Meeting Attendance?' :
+           type === 'delete' ? 'Delete Meeting Permanently?' :
            'Close / Pause Attendance?'}
         </h3>
 
@@ -886,8 +930,17 @@ function ConfirmDialog({ type, programName, onConfirm, onCancel, loading }: {
             ? 'The public attendance link will become LIVE immediately. Members can record attendance.'
             : type === 'reopen'
             ? 'The attendance link will be re-activated. Members can continue marking attendance.'
+            : type === 'delete'
+            ? 'This will permanently delete the meeting and ALL attendance records. This cannot be undone!'
             : 'Attendance recording will be paused/closed. Visitors to the link will see that attendance is closed.'}
         </p>
+
+        {type === 'delete' && (
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 font-medium flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>ഈ മീറ്റിംഗിന്റെ എല്ലാ ഹാജർ രേഖകളും ഒരുമിച്ച് ഡിലീറ്റ് ആകും. തിരികെ ലഭിക്കില്ല.</span>
+          </div>
+        )}
 
         <div className="flex gap-3 mt-6">
           <button onClick={onCancel} className="btn btn-secondary flex-1">Cancel</button>
@@ -904,6 +957,7 @@ function ConfirmDialog({ type, programName, onConfirm, onCancel, loading }: {
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> :
              type === 'start' ? 'Start Now' :
              type === 'reopen' ? 'Re-Open Now' :
+             type === 'delete' ? 'Delete Forever' :
              'Close Now'}
           </button>
         </div>

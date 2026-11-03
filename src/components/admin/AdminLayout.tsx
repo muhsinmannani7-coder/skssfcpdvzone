@@ -20,11 +20,13 @@ import AttendanceReports from './AttendanceReports'
 import HistoricalRecords from './HistoricalRecords'
 import AdminSettings from './AdminSettings'
 import LeaderboardStandings from './LeaderboardStandings'
+import UnitPointsReport from './UnitPointsReport'
 import { Trophy } from 'lucide-react'
 
 const navItems = [
   { path: '', icon: LayoutDashboard, label: 'Dashboard', end: true },
   { path: 'leaderboard', icon: Trophy, label: 'Leaderboard & Points' },
+  { path: 'unit-report', icon: BarChart3, label: 'ശാഖ പോയിന്റ് | Unit Report' },
   { path: 'members', icon: Users, label: 'Members' },
   { path: 'committees', icon: Building2, label: 'Committees & Units' },
   { path: 'programs', icon: CalendarCheck, label: 'Meetings & Attendance' },
@@ -168,6 +170,7 @@ export default function AdminLayout() {
             <Routes>
               <Route index element={<AdminDashboard />} />
               <Route path="leaderboard" element={<LeaderboardStandings />} />
+              <Route path="unit-report" element={<UnitPointsReport />} />
               <Route path="members" element={<MemberManagement />} />
               <Route path="committees" element={<CommitteeManagement />} />
               <Route path="programs" element={<ProgramManagement />} />
