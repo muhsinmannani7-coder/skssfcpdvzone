@@ -34,6 +34,15 @@ export type Database = {
       attendance_operators: { Row: AttendanceOperator; Insert: Partial<AttendanceOperator>; Update: Partial<AttendanceOperator> }
       programs: { Row: Program; Insert: Partial<Program>; Update: Partial<Program> }
       attendance: { Row: Attendance; Insert: Partial<Attendance>; Update: Partial<Attendance> }
+      videos: { Row: Video; Insert: Partial<Video>; Update: Partial<Video> }
+      video_likes: { Row: VideoLike; Insert: Partial<VideoLike>; Update: Partial<VideoLike> }
+      video_comments: { Row: VideoComment; Insert: Partial<VideoComment>; Update: Partial<VideoComment> }
+      branch_scores: { Row: BranchScore; Insert: Partial<BranchScore>; Update: Partial<BranchScore> }
+      branch_profiles: { Row: BranchProfile; Insert: Partial<BranchProfile>; Update: Partial<BranchProfile> }
+      events: { Row: EventItem; Insert: Partial<EventItem>; Update: Partial<EventItem> }
+      announcements: { Row: Announcement; Insert: Partial<Announcement>; Update: Partial<Announcement> }
+      ulama_directory: { Row: UlamaItem; Insert: Partial<UlamaItem>; Update: Partial<UlamaItem> }
+      doctors_directory: { Row: DoctorItem; Insert: Partial<DoctorItem>; Update: Partial<DoctorItem> }
     }
   }
 }
@@ -185,5 +194,134 @@ export interface AuditLog {
   record_id: string | null
   old_data: Record<string, unknown> | null
   new_data: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface Video {
+  id: string
+  title: string
+  description: string | null
+  youtube_url: string
+  youtube_video_id: string
+  thumbnail_url: string | null
+  duration: string | null
+  category: string
+  is_featured: boolean
+  is_published: boolean
+  view_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface VideoLike {
+  id: string
+  video_id: string
+  user_identifier: string
+  created_at: string
+}
+
+export interface VideoComment {
+  id: string
+  video_id: string
+  author_name: string
+  content: string
+  is_approved: boolean
+  created_at: string
+}
+
+export type ScoreCategory =
+  | 'MASIRA'
+  | 'KHUTBIYYATH'
+  | 'HIDAYA'
+  | 'EDU VISION'
+  | 'RAHMA BLOOD BANK'
+  | 'SAHACHARI CONNECT'
+  | 'ULAMA-UMARA SANGAMAM'
+
+export const SCORE_CATEGORY_MAX_MARKS: Record<ScoreCategory, number> = {
+  'MASIRA': 10,
+  'KHUTBIYYATH': 12,
+  'HIDAYA': 15,
+  'EDU VISION': 12,
+  'RAHMA BLOOD BANK': 12,
+  'SAHACHARI CONNECT': 22,
+  'ULAMA-UMARA SANGAMAM': 17,
+}
+
+export interface BranchScore {
+  id: string
+  unit_id: string
+  category: ScoreCategory
+  marks: number
+  max_marks: number
+  notes: string | null
+  is_published: boolean
+  evaluated_by: string | null
+  created_at: string
+  updated_at: string
+  unit?: Unit
+}
+
+export interface BranchProfile {
+  id: string
+  unit_id: string
+  president_name: string | null
+  president_mobile: string | null
+  secretary_name: string | null
+  secretary_mobile: string | null
+  treasurer_name: string | null
+  treasurer_mobile: string | null
+  address: string | null
+  photo_url: string | null
+  notes: string | null
+  updated_at: string
+  unit?: Unit
+}
+
+export interface EventItem {
+  id: string
+  title: string
+  description: string | null
+  venue: string | null
+  event_date: string
+  event_time: string | null
+  program_type: string
+  banner_url: string | null
+  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled'
+  created_at: string
+}
+
+export interface Announcement {
+  id: string
+  title: string
+  content: string
+  category: string
+  priority: 'low' | 'normal' | 'high' | 'urgent'
+  is_published: boolean
+  published_at: string
+  created_at: string
+}
+
+export interface UlamaItem {
+  id: string
+  name: string
+  title: string | null
+  mahallu: string | null
+  mobile: string | null
+  address: string | null
+  is_active: boolean
+  sort_order: number
+  created_at: string
+}
+
+export interface DoctorItem {
+  id: string
+  name: string
+  specialization: string | null
+  hospital: string | null
+  mobile: string | null
+  address: string | null
+  is_active: boolean
+  sort_order: number
   created_at: string
 }

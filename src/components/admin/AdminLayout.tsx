@@ -5,7 +5,7 @@ import { ToastProvider } from '@/components/shared/Toaster'
 import {
   LayoutDashboard, Users, Building2, CalendarCheck,
   ClipboardList, BarChart3, History, Settings, LogOut, Menu, X,
-  ChevronRight, Star, Shield, ExternalLink
+  ChevronRight, Star, Shield, ExternalLink, PlaySquare, Bell
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
@@ -21,12 +21,24 @@ import HistoricalRecords from './HistoricalRecords'
 import AdminSettings from './AdminSettings'
 import LeaderboardStandings from './LeaderboardStandings'
 import UnitPointsReport from './UnitPointsReport'
+import ZoneCommitteeReport from './ZoneCommitteeReport'
+import ScoreboardManagement from './ScoreboardManagement'
+import VideoManagement from './VideoManagement'
+import BranchProfileManagement from './BranchProfileManagement'
+import DirectoryManagement from './DirectoryManagement'
+import AnnouncementManagement from './AnnouncementManagement'
 import { Trophy } from 'lucide-react'
 
 const navItems = [
   { path: '', icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { path: 'scoreboard-admin', icon: Trophy, label: 'സ്കോർബോർഡ് | Scoreboard' },
+  { path: 'videos-admin', icon: PlaySquare, label: 'വീഡിയോസ് | Videos' },
+  { path: 'branch-profiles', icon: Building2, label: 'ശാഖാ വിവരങ്ങൾ | 16 Branches' },
+  { path: 'announcements-admin', icon: Bell, label: 'അറിയിപ്പുകൾ | Announcements' },
+  { path: 'directory-admin', icon: Users, label: 'ഡയറക്ടറി | Directory' },
   { path: 'leaderboard', icon: Trophy, label: 'Leaderboard & Points' },
   { path: 'unit-report', icon: BarChart3, label: 'ശാഖ പോയിന്റ് | Unit Report' },
+  { path: 'zone-report', icon: Shield, label: 'മേഖലാ റിപ്പോർട്ട് | Zone Report' },
   { path: 'members', icon: Users, label: 'Members' },
   { path: 'committees', icon: Building2, label: 'Committees & Units' },
   { path: 'programs', icon: CalendarCheck, label: 'Meetings & Attendance' },
@@ -169,8 +181,14 @@ export default function AdminLayout() {
           <div className="flex-1 p-4 lg:p-6">
             <Routes>
               <Route index element={<AdminDashboard />} />
+              <Route path="scoreboard-admin" element={<ScoreboardManagement />} />
+              <Route path="videos-admin" element={<VideoManagement />} />
+              <Route path="branch-profiles" element={<BranchProfileManagement />} />
+              <Route path="directory-admin" element={<DirectoryManagement />} />
+              <Route path="announcements-admin" element={<AnnouncementManagement />} />
               <Route path="leaderboard" element={<LeaderboardStandings />} />
               <Route path="unit-report" element={<UnitPointsReport />} />
+              <Route path="zone-report" element={<ZoneCommitteeReport />} />
               <Route path="members" element={<MemberManagement />} />
               <Route path="committees" element={<CommitteeManagement />} />
               <Route path="programs" element={<ProgramManagement />} />

@@ -10,6 +10,12 @@ import LoadingScreen from '@/components/shared/LoadingScreen'
 import PublicMeetingAttendance from '@/components/public/PublicMeetingAttendance'
 import PublicAttendanceBoard from '@/components/public/PublicAttendanceBoard'
 import LiveMeetingProjector from '@/components/admin/LiveMeetingProjector'
+import HomePage from '@/components/public/HomePage'
+import PublicScoreboard from '@/components/public/PublicScoreboard'
+import PublicVideos from '@/components/public/PublicVideos'
+import PublicBranches from '@/components/public/PublicBranches'
+import PublicDirectory from '@/components/public/PublicDirectory'
+import PublicAnnouncements from '@/components/public/PublicAnnouncements'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,10 +27,18 @@ const queryClient = new QueryClient({
 })
 
 function AppRoutes() {
-  const { loading, profile, isAdmin, isOperator } = useAuth()
+  const { loading, isAdmin, isOperator } = useAuth()
 
   return (
     <Routes>
+      {/* 0. Public Portal Pages */}
+      <Route path="/" element={<HomePage />} />
+      <Route path="/scoreboard" element={<PublicScoreboard />} />
+      <Route path="/videos" element={<PublicVideos />} />
+      <Route path="/branches" element={<PublicBranches />} />
+      <Route path="/directory" element={<PublicDirectory />} />
+      <Route path="/announcements" element={<PublicAnnouncements />} />
+
       {/* 1. Public Kiosk / WhatsApp Attendance Links (No Login Required) */}
       <Route path="/attend" element={<PublicMeetingAttendance />} />
       <Route path="/attend/:id" element={<PublicMeetingAttendance />} />
@@ -51,10 +65,8 @@ function AppRoutes() {
       {/* 6. Fallback redirection */}
       {loading ? (
         <Route path="*" element={<LoadingScreen />} />
-      ) : profile ? (
-        <Route path="*" element={<Navigate to={isAdmin ? "/admin" : "/operator"} replace />} />
       ) : (
-        <Route path="*" element={<Navigate to="/admin/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       )}
     </Routes>
   )
