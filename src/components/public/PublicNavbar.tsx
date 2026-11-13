@@ -73,11 +73,11 @@ export default function PublicNavbar() {
               <span>ഹാജർ രേഖപ്പെടുത്തുക</span>
             </Link>
             <Link
-              to="/admin/login"
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-surface-200 text-surface-600 text-xs font-semibold hover:bg-surface-100 transition"
+              to="/login"
+              className="flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-surface-900 text-white text-xs font-bold hover:bg-surface-800 transition shadow-xs"
             >
-              <Lock className="w-3 h-3 text-surface-400" />
-              <span>Admin</span>
+              <Lock className="w-3 h-3 text-emerald-400" />
+              <span>📱 App / ലോഗിൻ</span>
             </Link>
           </div>
 
@@ -135,3 +135,4 @@ export default function PublicNavbar() {
     </header>
   )
 }
+

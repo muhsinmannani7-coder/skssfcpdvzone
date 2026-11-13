@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { ToastProvider, Toaster } from '@/components/shared/Toaster'
-import AdminLogin from '@/components/auth/AdminLogin'
 import OperatorLogin from '@/components/auth/OperatorLogin'
 import AdminLayout from '@/components/admin/AdminLayout'
 import OperatorDashboard from '@/components/operator/AttendanceDashboard'
@@ -16,6 +15,13 @@ import PublicVideos from '@/components/public/PublicVideos'
 import PublicBranches from '@/components/public/PublicBranches'
 import PublicDirectory from '@/components/public/PublicDirectory'
 import PublicAnnouncements from '@/components/public/PublicAnnouncements'
+import MobileAppLogin from '@/components/auth/MobileAppLogin'
+import MobileAppShell from '@/components/app/MobileAppShell'
+import AppHomeScreen from '@/components/app/AppHomeScreen'
+import AppBranchesScreen from '@/components/app/AppBranchesScreen'
+import AppActivitiesScreen from '@/components/app/AppActivitiesScreen'
+import AppReportsScreen from '@/components/app/AppReportsScreen'
+import AppProfileScreen from '@/components/app/AppProfileScreen'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,7 +33,8 @@ const queryClient = new QueryClient({
 })
 
 function AppRoutes() {
-  const { loading, isAdmin, isOperator } = useAuth()
+  const { loading, isAdmin, isSecretary, isOperator } = useAuth()
+  const isAuthenticated = isAdmin || isSecretary
 
   return (
     <Routes>
@@ -39,30 +46,45 @@ function AppRoutes() {
       <Route path="/directory" element={<PublicDirectory />} />
       <Route path="/announcements" element={<PublicAnnouncements />} />
 
-      {/* 1. Public Kiosk / WhatsApp Attendance Links (No Login Required) */}
+      {/* 1. Mobile App Shell (WhatsApp/Instagram Style - For Admin & Secretaries) */}
+      <Route
+        path="/app"
+        element={
+          isAuthenticated ? <MobileAppShell /> : <Navigate to="/login" replace />
+        }
+      >
+        <Route index element={<AppHomeScreen />} />
+        <Route path="branches" element={<AppBranchesScreen />} />
+        <Route path="activities" element={<AppActivitiesScreen />} />
+        <Route path="reports" element={<AppReportsScreen />} />
+        <Route path="profile" element={<AppProfileScreen />} />
+      </Route>
+
+      {/* 2. Public Kiosk / WhatsApp Attendance Links (No Login Required) */}
       <Route path="/attend" element={<PublicMeetingAttendance />} />
       <Route path="/attend/:id" element={<PublicMeetingAttendance />} />
       <Route path="/m" element={<PublicMeetingAttendance />} />
       <Route path="/m/:id" element={<PublicMeetingAttendance />} />
       <Route path="/live" element={<PublicMeetingAttendance />} />
 
-      {/* 1b. Public Attendance Board — Shareable read-only attendance list */}
+      {/* 2b. Public Attendance Board — Shareable read-only attendance list */}
       <Route path="/board/:id" element={<PublicAttendanceBoard />} />
 
-      {/* 2. Fullscreen Live Projector / Display Mode */}
+      {/* 3. Fullscreen Live Projector / Display Mode */}
       <Route path="/admin/projector/:id" element={<LiveMeetingProjector />} />
 
-      {/* 3. Authentication Pages */}
-      <Route path="/admin/login" element={<AdminLogin />} />
+      {/* 4. Unified Mobile App Authentication Pages */}
+      <Route path="/login" element={<MobileAppLogin />} />
+      <Route path="/admin/login" element={<MobileAppLogin />} />
       <Route path="/operator/login" element={<OperatorLogin />} />
 
-      {/* 4. Authenticated Admin Portal */}
+      {/* 5. Authenticated Admin Desktop Console */}
       {isAdmin && <Route path="/admin/*" element={<AdminLayout />} />}
 
-      {/* 5. Authenticated Operator Portal */}
+      {/* 6. Authenticated Operator Portal */}
       {isOperator && <Route path="/operator" element={<OperatorDashboard />} />}
 
-      {/* 6. Fallback redirection */}
+      {/* 7. Fallback redirection */}
       {loading ? (
         <Route path="*" element={<LoadingScreen />} />
       ) : (

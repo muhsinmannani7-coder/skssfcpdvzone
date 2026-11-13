@@ -10,3 +10,4 @@ export function getYouTubeThumbnail(videoId: string, quality: 'default' | 'hq' |
   if (quality === 'hq') return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
   return `https://img.youtube.com/vi/${videoId}/default.jpg`
 }
+

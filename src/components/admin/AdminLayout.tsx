@@ -27,10 +27,12 @@ import VideoManagement from './VideoManagement'
 import BranchProfileManagement from './BranchProfileManagement'
 import DirectoryManagement from './DirectoryManagement'
 import AnnouncementManagement from './AnnouncementManagement'
-import { Trophy } from 'lucide-react'
+import SecretaryAccountManagement from './SecretaryAccountManagement'
+import { Trophy, KeyRound, Smartphone } from 'lucide-react'
 
 const navItems = [
   { path: '', icon: LayoutDashboard, label: 'Dashboard', end: true },
+  { path: 'secretaries', icon: KeyRound, label: 'സെക്രട്ടറി ലോഗിൻ | Secretary Accounts' },
   { path: 'scoreboard-admin', icon: Trophy, label: 'സ്കോർബോർഡ് | Scoreboard' },
   { path: 'videos-admin', icon: PlaySquare, label: 'വീഡിയോസ് | Videos' },
   { path: 'branch-profiles', icon: Building2, label: 'ശാഖാ വിവരങ്ങൾ | 16 Branches' },
@@ -94,13 +96,21 @@ export default function AdminLayout() {
         ))}
       </nav>
 
-      {/* Quick Attendance Link in Sidebar */}
-      <div className="px-3 pb-3">
+      {/* Mobile App & Attendance Links in Sidebar */}
+      <div className="px-3 pb-3 space-y-1.5">
+        <NavLink
+          to="/app"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-100 text-surface-800 text-xs font-bold hover:bg-surface-200 transition"
+        >
+          <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+          <span className="flex-1">📱 Mobile App Interface</span>
+          <ChevronRight className="w-3 h-3 text-surface-400" />
+        </NavLink>
         <a
           href="/attend"
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs font-bold shadow-md hover:from-emerald-500 hover:to-teal-600 transition"
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white text-xs font-bold shadow-xs hover:from-emerald-500 hover:to-teal-600 transition"
         >
           <span className="w-2 h-2 rounded-full bg-white animate-ping" />
           <span className="flex-1">Live Attendance Link</span>
@@ -181,6 +191,7 @@ export default function AdminLayout() {
           <div className="flex-1 p-4 lg:p-6">
             <Routes>
               <Route index element={<AdminDashboard />} />
+              <Route path="secretaries" element={<SecretaryAccountManagement />} />
               <Route path="scoreboard-admin" element={<ScoreboardManagement />} />
               <Route path="videos-admin" element={<VideoManagement />} />
               <Route path="branch-profiles" element={<BranchProfileManagement />} />

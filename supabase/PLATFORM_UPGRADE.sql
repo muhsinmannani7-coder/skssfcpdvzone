@@ -251,3 +251,4 @@ BEGIN
   WHERE id = p_video_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+

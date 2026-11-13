@@ -262,20 +262,90 @@ export interface BranchScore {
   unit?: Unit
 }
 
+export interface CommitteeMemberItem {
+  id?: string
+  name: string
+  position: string
+  mobile?: string
+}
+
 export interface BranchProfile {
   id: string
   unit_id: string
+  name_ml?: string | null
+  name_en?: string | null
+  location?: string | null
   president_name: string | null
   president_mobile: string | null
   secretary_name: string | null
   secretary_mobile: string | null
   treasurer_name: string | null
   treasurer_mobile: string | null
+  working_sec_name?: string | null
+  working_sec_mobile?: string | null
+  mahallu_name?: string | null
+  mahallu_president_name?: string | null
+  mahallu_president_mobile?: string | null
+  mahallu_secretary_name?: string | null
+  mahallu_secretary_mobile?: string | null
+  masjid_details?: string | null
+  other_office_bearers?: string | null
+  committee_members_list?: CommitteeMemberItem[] | null
+  total_members?: number | null
+  active_workers?: number | null
+  meeting_details?: string | null
+  organizational_activities?: string | null
+  educational_activities?: string | null
+  social_service_activities?: string | null
+  photos?: string[] | null
+  documents?: string[] | null
+  profile_status?: 'draft' | 'submitted' | 'approved'
+  submitted_at?: string | null
+  approved_at?: string | null
   address: string | null
   photo_url: string | null
   notes: string | null
   updated_at: string
   unit?: Unit
+}
+
+export interface SecretaryAccount {
+  id: string
+  unit_id: string
+  name: string
+  mobile: string
+  password_hash: string
+  must_change_password: boolean
+  is_active: boolean
+  last_login: string | null
+  created_at: string
+  updated_at: string
+  unit?: Unit
+}
+
+export interface BranchActivity {
+  id: string
+  unit_id: string
+  title: string
+  category: 'organizational' | 'educational' | 'social' | 'meeting'
+  activity_date: string
+  description: string
+  participants_count: number
+  photos?: string[] | null
+  status: 'draft' | 'pending' | 'approved' | 'published'
+  created_by_secretary_id?: string | null
+  created_at: string
+  unit?: Unit
+}
+
+export interface AppNotification {
+  id: string
+  title: string
+  message: string
+  target_role: 'all' | 'admin' | 'secretary'
+  unit_id?: string | null
+  is_read: boolean
+  created_at: string
 }
 
 export interface EventItem {
